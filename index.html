@@ -162,7 +162,18 @@
         if (currentCoin) fetchDataAndUpdate();
     }
 
-    function resetChartView() { if (candleChart && volumeChart) { candleChart.timeScale().fitContent(); volumeChart.timeScale().fitContent(); } }
+    function resetChartView() { 
+        if (candleChart && volumeChart) { 
+            candleChart.timeScale().fitContent(); 
+            volumeChart.timeScale().fitContent(); 
+        } 
+    }
+
+    function syncVolumeRange() {
+        if (!candleChart || !volumeChart) return;
+        const range = candleChart.timeScale().getVisibleRange();
+        if (range) volumeChart.timeScale().setVisibleRange(range);
+    }
 
     function buildCoinSelector() {
         const grid = document.getElementById("coinsGrid");
@@ -275,25 +286,32 @@
                 timeScale: { borderColor: '#333', timeVisible: true, secondsVisible: false }
             });
             candleSeries = candleChart.addCandlestickSeries({ upColor: '#00ff88', downColor: '#ff4444', borderVisible: false, wickUpColor: '#00ff88', wickDownColor: '#ff4444' });
+            
             volumeChart = LightweightCharts.createChart(document.getElementById('volume-chart'), {
                 layout: { background: { color: '#111' }, textColor: '#ccc' },
                 grid: { vertLines: { color: '#1e1e1e' }, horzLines: { color: '#1e1e1e' } },
                 height: 150,
                 crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-                timeScale: { borderColor: '#333', timeVisible: true, visible: true }   // ← ensure time scale visible & syncable
+                timeScale: { borderColor: '#333', timeVisible: true, visible: true }  // ensure timeScale visible
             });
             volumeSeries = volumeChart.addHistogramSeries({ color: '#aaa', priceFormat: { type: 'volume' }, priceScaleId: '' });
-            // Synchronize volume chart's time range with candle chart's pan/zoom
+            
+            // Synchronize volume chart's visible range with candle chart's pan/zoom
             candleChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
                 if (range) volumeChart.timeScale().setVisibleRange(range);
             });
         }
 
+        // Update data
         const candleItems = candles.map(c => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }));
         const volumeItems = candles.map(c => ({ time: c.time, value: c.volume, color: c.close >= c.open ? '#00ff88' : '#ff4444' }));
         candleSeries.setData(candleItems);
         volumeSeries.setData(volumeItems);
 
+        // Force sync after data update (in case the subscription missed)
+        setTimeout(() => syncVolumeRange(), 10);
+
+        // Remove old indicators
         for (let key in indicatorLines) if (indicatorLines[key]) candleChart.removeSeries(indicatorLines[key]);
         indicatorLines = {};
         const closes = candles.map(c => c.close);
@@ -303,6 +321,7 @@
         if (currentIndicators.includes("vwap") && candles.length>0) { let vwap=computeVWAP(candles); let line=candleChart.addLineSeries({color:'#ffaa33',lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dotted,title:'VWAP'}); line.setData(vwap.map((v,i)=>({time:candles[i].time,value:v}))); indicatorLines.vwap=line; }
         if (currentIndicators.includes("supertrend") && candles.length>=10) { let st=computeSuperTrend(candles,10,3); let line=candleChart.addLineSeries({color:'#ff44ff',lineWidth:1,title:'SuperTrend'}); line.setData(st.map((v,i)=>({time:candles[i].time,value:v}))); indicatorLines.supertrend=line; }
 
+        // Markers
         if (window.markerLines) window.markerLines.forEach(l=>candleChart.removeSeries(l));
         window.markerLines = [];
         const addHLine = (price,color) => { let line=candleChart.addLineSeries({color,lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,priceLineVisible:false,lastValueVisible:false}); line.setData(candles.map(c=>({time:c.time,value:price}))); window.markerLines.push(line); };
@@ -311,7 +330,8 @@
         if (currentHlMarkers.includes("5m") && candles.length) { let now=candles[candles.length-1].time, fiveAgo=now-300, filtered=candles.filter(c=>c.time>=fiveAgo); if(filtered.length){ addHLine(Math.max(...filtered.map(c=>c.high)),"lightgreen"); addHLine(Math.min(...filtered.map(c=>c.low)),"salmon"); } }
         if (currentHlMarkers.includes("15m") && candles.length) { let now=candles[candles.length-1].time, fifteenAgo=now-900, filtered=candles.filter(c=>c.time>=fifteenAgo); if(filtered.length){ addHLine(Math.max(...filtered.map(c=>c.high)),"yellow"); addHLine(Math.min(...filtered.map(c=>c.low)),"magenta"); } }
         if (entryPrice !== null && !isNaN(entryPrice)) { let line=candleChart.addLineSeries({color:'#ffaa00',lineWidth:2,lineStyle:LightweightCharts.LineStyle.Solid,title:'Entry'}); line.setData(candles.map(c=>({time:c.time,value:entryPrice}))); window.markerLines.push(line); }
-        // No fitContent() here → preserves user's pan position across updates
+        
+        // No fitContent here – user pan is preserved
     }
 
     function initUI() {
