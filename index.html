@@ -296,19 +296,19 @@
             });
             volumeSeries = volumeChart.addHistogramSeries({ color: '#aaa', priceFormat: { type: 'volume' }, priceScaleId: '' });
             
-            // Synchronize volume chart with candle chart — drag, zoom, scroll all in sync
-            let isSyncing = false;
+            // Bidirectional sync: drag/zoom/scroll on either chart moves both together
+            let _syncing = false;
             candleChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-                if (isSyncing || !range) return;
-                isSyncing = true;
+                if (_syncing || !range) return;
+                _syncing = true;
                 volumeChart.timeScale().setVisibleLogicalRange(range);
-                isSyncing = false;
+                _syncing = false;
             });
             volumeChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
-                if (isSyncing || !range) return;
-                isSyncing = true;
+                if (_syncing || !range) return;
+                _syncing = true;
                 candleChart.timeScale().setVisibleLogicalRange(range);
-                isSyncing = false;
+                _syncing = false;
             });
         }
 
@@ -325,11 +325,12 @@
         for (let key in indicatorLines) if (indicatorLines[key]) candleChart.removeSeries(indicatorLines[key]);
         indicatorLines = {};
         const closes = candles.map(c => c.close);
-        if (currentIndicators.includes("ema9") && candles.length>=9) { let ema9=computeEMA(closes,9); let line=candleChart.addLineSeries({color:'#00aaff',lineWidth:1,title:'EMA9'}); line.setData(ema9.map((v,i)=>({time:candles[i].time,value:v}))); indicatorLines.ema9=line; }
-        if (currentIndicators.includes("ema21") && candles.length>=21) { let ema21=computeEMA(closes,21); let line=candleChart.addLineSeries({color:'#ff8800',lineWidth:1,title:'EMA21'}); line.setData(ema21.map((v,i)=>({time:candles[i].time,value:v}))); indicatorLines.ema21=line; }
-        if (currentIndicators.includes("sma20") && candles.length>=20) { let sma20=computeSMA(closes,20); let line=candleChart.addLineSeries({color:'#ff66cc',lineWidth:1,title:'SMA20'}); line.setData(sma20.map((v,i)=>({time:candles[i].time,value:v}))); indicatorLines.sma20=line; }
-        if (currentIndicators.includes("vwap") && candles.length>0) { let vwap=computeVWAP(candles); let line=candleChart.addLineSeries({color:'#ffaa33',lineWidth:1,lineStyle:LightweightCharts.LineStyle.Solid,title:'VWAP'}); line.setData(vwap.map((v,i)=>({time:candles[i].time,value:v}))); indicatorLines.vwap=line; }
-        if (currentIndicators.includes("supertrend") && candles.length>=10) { let st=computeSuperTrend(candles,10,3); let line=candleChart.addLineSeries({color:'#ff44ff',lineWidth:1,title:'SuperTrend'}); line.setData(st.map((v,i)=>({time:candles[i].time,value:v}))); indicatorLines.supertrend=line; }
+        // priceLineVisible:false removes the dotted horizontal line on the right axis; lastValueVisible:false removes the price label box
+        if (currentIndicators.includes("ema9") && candles.length>=9) { let ema9=computeEMA(closes,9); let line=candleChart.addLineSeries({color:'#00aaff',lineWidth:1,title:'EMA9',priceLineVisible:false,lastValueVisible:false}); line.setData(ema9.map((v,i)=>({time:candles[i].time,value:v}))); indicatorLines.ema9=line; }
+        if (currentIndicators.includes("ema21") && candles.length>=21) { let ema21=computeEMA(closes,21); let line=candleChart.addLineSeries({color:'#ff8800',lineWidth:1,title:'EMA21',priceLineVisible:false,lastValueVisible:false}); line.setData(ema21.map((v,i)=>({time:candles[i].time,value:v}))); indicatorLines.ema21=line; }
+        if (currentIndicators.includes("sma20") && candles.length>=20) { let sma20=computeSMA(closes,20); let line=candleChart.addLineSeries({color:'#ff66cc',lineWidth:1,title:'SMA20',priceLineVisible:false,lastValueVisible:false}); line.setData(sma20.map((v,i)=>({time:candles[i].time,value:v}))); indicatorLines.sma20=line; }
+        if (currentIndicators.includes("vwap") && candles.length>0) { let vwap=computeVWAP(candles); let line=candleChart.addLineSeries({color:'#ffaa33',lineWidth:1,lineStyle:LightweightCharts.LineStyle.Solid,title:'VWAP',priceLineVisible:false,lastValueVisible:false}); line.setData(vwap.map((v,i)=>({time:candles[i].time,value:v}))); indicatorLines.vwap=line; }
+        if (currentIndicators.includes("supertrend") && candles.length>=10) { let st=computeSuperTrend(candles,10,3); let line=candleChart.addLineSeries({color:'#ff44ff',lineWidth:1,title:'SuperTrend',priceLineVisible:false,lastValueVisible:false}); line.setData(st.map((v,i)=>({time:candles[i].time,value:v}))); indicatorLines.supertrend=line; }
 
         // Markers
         if (window.markerLines) window.markerLines.forEach(l=>candleChart.removeSeries(l));
