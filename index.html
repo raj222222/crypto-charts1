@@ -44,7 +44,16 @@
         #candle-chart { height: 460px; width: 100%; }
         #volume-chart { height: 150px; width: 100%; margin-top: 8px; }
         .source-label { color: #555; font-size: 10px; margin-top: 12px; text-align: right; }
-        @media (max-width: 700px) { .coins-grid { gap: 12px; } .coin-card { padding: 12px 18px; min-width: 90px; } .coin-symbol { font-size: 16px; } .controls-row { flex-direction: column; align-items: stretch; } }
+        .tg-config { background: #111; border: 1px solid #2a2a2a; border-radius: 8px; padding: 10px 16px; margin-bottom: 12px; display: flex; align-items: center; flex-wrap: wrap; gap: 12px; }
+        .tg-config-title { color: #29a8e0; font-size: 13px; font-weight: bold; white-space: nowrap; }
+        .tg-input { background: #222; border: 1px solid #444; color: #fff; padding: 4px 8px; border-radius: 4px; font-size: 12px; font-family: 'Courier New', monospace; }
+        .tg-token-input { width: 280px; }
+        .tg-chatid-input { width: 130px; }
+        .tg-status { font-size: 11px; padding: 3px 10px; border-radius: 4px; }
+        .tg-status.ok  { background: #1a3a1a; color: #00ff88; border: 1px solid #00aa44; }
+        .tg-status.err { background: #3a1a1a; color: #ff6666; border: 1px solid #aa2222; }
+        .tg-status.idle { background: #1a1a2a; color: #888; border: 1px solid #333; }
+        @media (max-width: 700px) { .coins-grid { gap: 12px; } .coin-card { padding: 12px 18px; min-width: 90px; } .coin-symbol { font-size: 16px; } .controls-row { flex-direction: column; align-items: stretch; } .tg-token-input { width: 100%; } }
     </style>
 </head>
 <body>
@@ -94,6 +103,14 @@
             </div>
         </div>
 
+        <div class="tg-config">
+            <span class="tg-config-title">📨 Telegram Alerts</span>
+            <input type="text" id="tgToken" class="tg-input tg-token-input" placeholder="Bot Token: 7412345678:AAFxxx..." />
+            <input type="text" id="tgChatId" class="tg-input tg-chatid-input" placeholder="Chat ID: 123456789" />
+            <button id="tgTestBtn" style="border-color:#29a8e0;color:#29a8e0;">🔔 Test</button>
+            <span id="tgStatus" class="tg-status idle">Not configured</span>
+        </div>
+
         <div class="chart-container">
             <div id="candle-chart"></div>
             <div id="volume-chart"></div>
@@ -136,6 +153,35 @@
     let currentCoin = null, currentInterval = DEFAULT_INTERVAL, currentIndicators = ["ema9","ema21"], currentHlMarkers = [];
     let entryPrice = null, tickerData = null, candleData = [], priceHistory = [], pollTimer = null;
     let candleChart = null, volumeChart = null, candleSeries = null, volumeSeries = null, indicatorLines = {};
+
+    // ---- TELEGRAM CONFIG ----
+    const alertCooldowns = {};
+    function getTgToken()  { return document.getElementById("tgToken")?.value.trim() || ""; }
+    function getTgChatId() { return document.getElementById("tgChatId")?.value.trim() || ""; }
+    function setTgStatus(msg, type) {
+        const el = document.getElementById("tgStatus");
+        if (!el) return;
+        el.textContent = msg;
+        el.className = "tg-status " + type;
+    }
+
+    async function sendTelegramAlert(message, alertKey = "default", cooldownMs = 30000) {
+        const token = getTgToken(), chatId = getTgChatId();
+        if (!token || !chatId) { setTgStatus("Token/Chat ID missing", "err"); return; }
+        const now = Date.now();
+        if (alertCooldowns[alertKey] && now - alertCooldowns[alertKey] < cooldownMs) return;
+        alertCooldowns[alertKey] = now;
+        try {
+            const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: "HTML" })
+            });
+            const data = await res.json();
+            if (data.ok) setTgStatus("Sent \u2713 " + new Date().toLocaleTimeString(), "ok");
+            else setTgStatus("Error: " + (data.description || "unknown"), "err");
+        } catch(e) { setTgStatus("Network error", "err"); }
+    }
 
     // localStorage presets
     function loadPresets() { const s = localStorage.getItem("crypto_presets"); return s ? JSON.parse(s) : {}; }
@@ -192,6 +238,16 @@
         if (pollTimer) clearInterval(pollTimer);
         currentCoin = coin;
         applyPreset(coin);
+        // Send Telegram alert when TRUMP is selected
+        if (coin === "TRUMP") {
+            const now = new Date();
+            const msg = "🚨 <b>TRUMP Coin Selected!</b>\n\n"
+                + "📊 You are now watching <b>TRUMP/USDT</b> live chart.\n"
+                + "⏰ Time: " + now.toLocaleString("en-US", {timeZone:"America/New_York"}) + " EST\n"
+                + "🔗 Source: Binance | Interval: " + currentInterval + "\n\n"
+                + "<i>Stay sharp — TRUMP is highly volatile!</i>";
+            sendTelegramAlert(msg, "trump_selected", 10000);
+        }
         document.getElementById("selectorView").style.display = "none";
         document.getElementById("chartView").style.display = "block";
         document.getElementById("chartTitle").innerHTML = `${CRYPTO_LIST[coin].name} (${coin}/USDT) Live Chart`;
@@ -385,6 +441,15 @@
         document.getElementById("resetViewBtn").onclick = () => resetChartView();
         document.getElementById("entryPriceInput").addEventListener('change', (e) => { let v=parseFloat(e.target.value); entryPrice=isNaN(v)?null:v; if(currentCoin) fetchDataAndUpdate(); });
         document.getElementById("backBtn").onclick = goBack;
+        // Telegram: restore saved credentials & wire up Test button
+        const savedToken = localStorage.getItem("tg_token"), savedChatId = localStorage.getItem("tg_chatid");
+        if (savedToken) document.getElementById("tgToken").value = savedToken;
+        if (savedChatId) document.getElementById("tgChatId").value = savedChatId;
+        document.getElementById("tgToken").addEventListener("change", () => localStorage.setItem("tg_token", getTgToken()));
+        document.getElementById("tgChatId").addEventListener("change", () => localStorage.setItem("tg_chatid", getTgChatId()));
+        document.getElementById("tgTestBtn").onclick = () => {
+            sendTelegramAlert("🔕 <b>Test Alert</b>\nYour Crypto Chart Telegram alerts are working correctly! ✅", "test", 0);
+        };
         function updateClock() { let now=new Date(), est=new Date(now.toLocaleString("en-US",{timeZone:"America/New_York"})); document.getElementById("estClock").innerHTML=`EST: ${est.toLocaleString()}`; }
         updateClock(); setInterval(updateClock, 1000);
     }
