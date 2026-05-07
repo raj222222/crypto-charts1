@@ -49,7 +49,6 @@
 </head>
 <body>
 <div class="container">
-    <!-- Selector View -->
     <div id="selectorView" class="selector-page">
         <div class="selector-title">Live Crypto Chart</div>
         <div class="selector-sub">Select a cryptocurrency to view its live candlestick chart</div>
@@ -57,7 +56,6 @@
         <div class="footer-note">Powered by Binance API | Data refreshes every 5s</div>
     </div>
 
-    <!-- Chart View -->
     <div id="chartView" class="chart-page">
         <div class="top-bar">
             <button class="back-btn" id="backBtn"><i class="fas fa-arrow-left"></i> Back</button>
@@ -72,16 +70,12 @@
                 <div class="radio-group" id="intervalGroup"></div>
             </div>
             <div class="control-group">
-                <span class="control-label">High/Low Markers:</span>
-                <div class="check-group" id="hlMarkersGroup"></div>
+                <span class="control-label">Indicators:</span>
+                <div class="check-group" id="indicatorsGroup"></div>
             </div>
         </div>
 
         <div class="controls-row">
-            <div class="control-group">
-                <span class="control-label">Indicators:</span>
-                <div class="check-group" id="indicatorsGroup"></div>
-            </div>
             <div class="control-group">
                 <button id="savePresetBtn">💾 Save Preset</button>
                 <button id="resetPresetBtn">🔄 Reset Preset</button>
@@ -133,11 +127,11 @@
     const REFRESH_MS = 5000;
     const MAX_CANDLES = 100;
 
-    let currentCoin = null, currentInterval = DEFAULT_INTERVAL, currentIndicators = ["ema9","ema21"], currentHlMarkers = [];
+    let currentCoin = null, currentInterval = DEFAULT_INTERVAL, currentIndicators = ["ema9","ema21"];
     let entryPrice = null, tickerData = null, candleData = [], priceHistory = [], pollTimer = null;
     let candleChart = null, volumeChart = null, candleSeries = null, volumeSeries = null, indicatorLines = {};
 
-    // localStorage presets
+    // localStorage presets (stores interval + indicators)
     function loadPresets() { const s = localStorage.getItem("crypto_presets"); return s ? JSON.parse(s) : {}; }
     function savePreset(coin, preset) { let p = loadPresets(); p[coin] = preset; localStorage.setItem("crypto_presets", JSON.stringify(p)); }
     function getPreset(coin) { return loadPresets()[coin] || null; }
@@ -150,15 +144,12 @@
         if (preset) {
             currentInterval = preset.interval || DEFAULT_INTERVAL;
             currentIndicators = preset.indicators || ["ema9","ema21"];
-            currentHlMarkers = preset.hlMarkers || [];
         } else {
             currentInterval = DEFAULT_INTERVAL;
             currentIndicators = ["ema9","ema21"];
-            currentHlMarkers = [];
         }
         document.querySelectorAll('input[name="interval"]').forEach(r => { if (r.value === currentInterval) r.checked = true; });
         updateCheckGroup("indicatorsGroup", currentIndicators);
-        updateCheckGroup("hlMarkersGroup", currentHlMarkers);
         if (currentCoin) fetchDataAndUpdate();
     }
 
@@ -226,7 +217,7 @@
         return { ltp: parseFloat(data.lastPrice), change_pct: parseFloat(data.priceChangePercent), high_24h: parseFloat(data.highPrice), low_24h: parseFloat(data.lowPrice), volume_24h: parseFloat(data.volume), bid: parseFloat(data.bidPrice), ask: parseFloat(data.askPrice) };
     }
 
-    // Indicators (same as before)
+    // Indicators
     function computeEMA(values, period) { let k=2/(period+1), ema=[], prev=values[0]; for(let i=0;i<values.length;i++) { if(i===0) ema[i]=values[i]; else ema[i]=values[i]*k+prev*(1-k); prev=ema[i]; } return ema; }
     function computeSMA(values, period) { let sma=[]; for(let i=0;i<values.length;i++) { if(i<period-1) sma[i]=null; else { let sum=0; for(let j=i-period+1;j<=i;j++) sum+=values[j]; sma[i]=sum/period; } } return sma; }
     function computeVWAP(candles) { let cumPV=0, cumVol=0, vwap=[]; for(let i=0;i<candles.length;i++) { const typical=(candles[i].high+candles[i].low+candles[i].close)/3; cumPV+=typical*candles[i].volume; cumVol+=candles[i].volume; vwap[i]=cumVol?cumPV/cumVol:candles[i].close; } return vwap; }
@@ -292,11 +283,11 @@
                 grid: { vertLines: { color: '#1e1e1e' }, horzLines: { color: '#1e1e1e' } },
                 height: 150,
                 crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-                timeScale: { borderColor: '#333', timeVisible: true, visible: true }  // ensure timeScale visible
+                timeScale: { borderColor: '#333', timeVisible: true, visible: true }
             });
-            volumeSeries = volumeChart.addHistogramSeries({ color: '#aaa', priceFormat: { type: 'volume' }, priceScaleId: '' });
+            volumeSeries = volumeChart.addHistogramSeries({ color: '#888', priceFormat: { type: 'volume' }, priceScaleId: '' });
             
-            // Synchronize volume chart's visible range with candle chart's pan/zoom
+            // Synchronize volume chart view with candle chart pan/zoom
             candleChart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
                 if (range) volumeChart.timeScale().setVisibleRange(range);
             });
@@ -308,30 +299,55 @@
         candleSeries.setData(candleItems);
         volumeSeries.setData(volumeItems);
 
-        // Force sync after data update (in case the subscription missed)
+        // Force sync after data update (in case subscription missed)
         setTimeout(() => syncVolumeRange(), 10);
 
-        // Remove old indicators
+        // Remove old indicator lines
         for (let key in indicatorLines) if (indicatorLines[key]) candleChart.removeSeries(indicatorLines[key]);
         indicatorLines = {};
-        const closes = candles.map(c => c.close);
-        if (currentIndicators.includes("ema9") && candles.length>=9) { let ema9=computeEMA(closes,9); let line=candleChart.addLineSeries({color:'#00aaff',lineWidth:1,title:'EMA9'}); line.setData(ema9.map((v,i)=>({time:candles[i].time,value:v}))); indicatorLines.ema9=line; }
-        if (currentIndicators.includes("ema21") && candles.length>=21) { let ema21=computeEMA(closes,21); let line=candleChart.addLineSeries({color:'#ff8800',lineWidth:1,title:'EMA21'}); line.setData(ema21.map((v,i)=>({time:candles[i].time,value:v}))); indicatorLines.ema21=line; }
-        if (currentIndicators.includes("sma20") && candles.length>=20) { let sma20=computeSMA(closes,20); let line=candleChart.addLineSeries({color:'#ff66cc',lineWidth:1,title:'SMA20'}); line.setData(sma20.map((v,i)=>({time:candles[i].time,value:v}))); indicatorLines.sma20=line; }
-        if (currentIndicators.includes("vwap") && candles.length>0) { let vwap=computeVWAP(candles); let line=candleChart.addLineSeries({color:'#ffaa33',lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dotted,title:'VWAP'}); line.setData(vwap.map((v,i)=>({time:candles[i].time,value:v}))); indicatorLines.vwap=line; }
-        if (currentIndicators.includes("supertrend") && candles.length>=10) { let st=computeSuperTrend(candles,10,3); let line=candleChart.addLineSeries({color:'#ff44ff',lineWidth:1,title:'SuperTrend'}); line.setData(st.map((v,i)=>({time:candles[i].time,value:v}))); indicatorLines.supertrend=line; }
 
-        // Markers
-        if (window.markerLines) window.markerLines.forEach(l=>candleChart.removeSeries(l));
-        window.markerLines = [];
-        const addHLine = (price,color) => { let line=candleChart.addLineSeries({color,lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,priceLineVisible:false,lastValueVisible:false}); line.setData(candles.map(c=>({time:c.time,value:price}))); window.markerLines.push(line); };
-        if (currentHlMarkers.includes("24h") && ticker) { addHLine(ticker.high_24h,"#00ccff"); addHLine(ticker.low_24h,"#ff8800"); }
-        if (currentHlMarkers.includes("1h") && candles.length) { let now=candles[candles.length-1].time, hourAgo=now-3600, filtered=candles.filter(c=>c.time>=hourAgo); if(filtered.length){ addHLine(Math.max(...filtered.map(c=>c.high)),"cyan"); addHLine(Math.min(...filtered.map(c=>c.low)),"orange"); } }
-        if (currentHlMarkers.includes("5m") && candles.length) { let now=candles[candles.length-1].time, fiveAgo=now-300, filtered=candles.filter(c=>c.time>=fiveAgo); if(filtered.length){ addHLine(Math.max(...filtered.map(c=>c.high)),"lightgreen"); addHLine(Math.min(...filtered.map(c=>c.low)),"salmon"); } }
-        if (currentHlMarkers.includes("15m") && candles.length) { let now=candles[candles.length-1].time, fifteenAgo=now-900, filtered=candles.filter(c=>c.time>=fifteenAgo); if(filtered.length){ addHLine(Math.max(...filtered.map(c=>c.high)),"yellow"); addHLine(Math.min(...filtered.map(c=>c.low)),"magenta"); } }
-        if (entryPrice !== null && !isNaN(entryPrice)) { let line=candleChart.addLineSeries({color:'#ffaa00',lineWidth:2,lineStyle:LightweightCharts.LineStyle.Solid,title:'Entry'}); line.setData(candles.map(c=>({time:c.time,value:entryPrice}))); window.markerLines.push(line); }
-        
-        // No fitContent here – user pan is preserved
+        const closes = candles.map(c => c.close);
+        if (currentIndicators.includes("ema9") && candles.length >= 9) {
+            const ema9 = computeEMA(closes, 9);
+            const line = candleChart.addLineSeries({ color: '#00aaff', lineWidth: 1, title: 'EMA9' });
+            line.setData(ema9.map((v,i) => ({ time: candles[i].time, value: v })));
+            indicatorLines.ema9 = line;
+        }
+        if (currentIndicators.includes("ema21") && candles.length >= 21) {
+            const ema21 = computeEMA(closes, 21);
+            const line = candleChart.addLineSeries({ color: '#ff8800', lineWidth: 1, title: 'EMA21' });
+            line.setData(ema21.map((v,i) => ({ time: candles[i].time, value: v })));
+            indicatorLines.ema21 = line;
+        }
+        if (currentIndicators.includes("sma20") && candles.length >= 20) {
+            const sma20 = computeSMA(closes, 20);
+            const line = candleChart.addLineSeries({ color: '#ff66cc', lineWidth: 1, title: 'SMA20' });
+            line.setData(sma20.map((v,i) => ({ time: candles[i].time, value: v })));
+            indicatorLines.sma20 = line;
+        }
+        if (currentIndicators.includes("vwap") && candles.length > 0) {
+            const vwap = computeVWAP(candles);
+            const line = candleChart.addLineSeries({ color: '#ffaa33', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid, title: 'VWAP' });
+            line.setData(vwap.map((v,i) => ({ time: candles[i].time, value: v })));
+            indicatorLines.vwap = line;
+        }
+        if (currentIndicators.includes("supertrend") && candles.length >= 10) {
+            const st = computeSuperTrend(candles, 10, 3);
+            const line = candleChart.addLineSeries({ color: '#ff44ff', lineWidth: 1, title: 'SuperTrend' });
+            line.setData(st.map((v,i) => ({ time: candles[i].time, value: v })));
+            indicatorLines.supertrend = line;
+        }
+
+        // Entry line (orange) - keep this as user-requested feature
+        if (entryPrice !== null && !isNaN(entryPrice)) {
+            const entryLine = candleChart.addLineSeries({ color: '#ffaa00', lineWidth: 2, lineStyle: LightweightCharts.LineStyle.Solid, title: 'Entry' });
+            entryLine.setData(candles.map(c => ({ time: c.time, value: entryPrice })));
+            if (window.entryLineSeries) candleChart.removeSeries(window.entryLineSeries);
+            window.entryLineSeries = entryLine;
+        } else if (window.entryLineSeries) {
+            candleChart.removeSeries(window.entryLineSeries);
+            window.entryLineSeries = null;
+        }
     }
 
     function initUI() {
@@ -339,17 +355,22 @@
         const intervalDiv = document.getElementById("intervalGroup");
         intervalDiv.innerHTML = INTERVALS.map(iv => `<label><input type="radio" name="interval" value="${iv}"> ${iv} </label>`).join('');
         document.querySelectorAll('input[name="interval"]').forEach(r => r.addEventListener('change', (e) => { if(e.target.checked){ currentInterval=e.target.value; if(currentCoin) fetchDataAndUpdate().then(()=>resetChartView()); } }));
-        const hlDiv = document.getElementById("hlMarkersGroup");
-        hlDiv.innerHTML = `<label><input type="checkbox" value="24h"> 24h High/Low</label><label><input type="checkbox" value="1h"> 1h High/Low</label><label><input type="checkbox" value="5m"> 5m High/Low</label><label><input type="checkbox" value="15m"> 15m High/Low</label>`;
-        hlDiv.querySelectorAll('input').forEach(cb => cb.addEventListener('change', () => { currentHlMarkers = getCheckValues("hlMarkersGroup"); if(currentCoin) fetchDataAndUpdate(); }));
+        
         const indDiv = document.getElementById("indicatorsGroup");
-        indDiv.innerHTML = `<label><input type="checkbox" value="ema9"> EMA9</label><label><input type="checkbox" value="ema21"> EMA21</label><label><input type="checkbox" value="sma20"> SMA20</label><label><input type="checkbox" value="vwap"> VWAP</label><label><input type="checkbox" value="supertrend"> SuperTrend</label>`;
+        indDiv.innerHTML = `<label><input type="checkbox" value="ema9"> EMA9</label>
+                            <label><input type="checkbox" value="ema21"> EMA21</label>
+                            <label><input type="checkbox" value="sma20"> SMA20</label>
+                            <label><input type="checkbox" value="vwap"> VWAP</label>
+                            <label><input type="checkbox" value="supertrend"> SuperTrend</label>`;
         indDiv.querySelectorAll('input').forEach(cb => cb.addEventListener('change', () => { currentIndicators = getCheckValues("indicatorsGroup"); if(currentCoin) fetchDataAndUpdate(); }));
-        document.getElementById("savePresetBtn").onclick = () => { if(currentCoin) { savePreset(currentCoin, {interval:currentInterval, indicators:currentIndicators, hlMarkers:currentHlMarkers}); alert(`Preset saved for ${currentCoin}`); } };
+        
+        document.getElementById("savePresetBtn").onclick = () => { if(currentCoin) { savePreset(currentCoin, {interval:currentInterval, indicators:currentIndicators}); alert(`Preset saved for ${currentCoin}`); } };
         document.getElementById("resetPresetBtn").onclick = () => { if(currentCoin) { applyPreset(currentCoin); if(currentCoin) fetchDataAndUpdate().then(()=>resetChartView()); } };
         document.getElementById("resetViewBtn").onclick = () => resetChartView();
+        
         document.getElementById("entryPriceInput").addEventListener('change', (e) => { let v=parseFloat(e.target.value); entryPrice=isNaN(v)?null:v; if(currentCoin) fetchDataAndUpdate(); });
         document.getElementById("backBtn").onclick = goBack;
+        
         function updateClock() { let now=new Date(), est=new Date(now.toLocaleString("en-US",{timeZone:"America/New_York"})); document.getElementById("estClock").innerHTML=`EST: ${est.toLocaleString()}`; }
         updateClock(); setInterval(updateClock, 1000);
     }
