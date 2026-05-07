@@ -239,6 +239,19 @@
         return st;
     }
 
+    function computeBollingerBands(values, period=20, mult=2) {
+        let upper=[], middle=[], lower=[];
+        for (let i=0; i<values.length; i++) {
+            if (i < period-1) { upper[i]=null; middle[i]=null; lower[i]=null; continue; }
+            let sum=0; for (let j=i-period+1; j<=i; j++) sum+=values[j];
+            const mean=sum/period;
+            let variance=0; for (let j=i-period+1; j<=i; j++) variance+=(values[j]-mean)**2;
+            const sd=Math.sqrt(variance/period);
+            middle[i]=mean; upper[i]=mean+mult*sd; lower[i]=mean-mult*sd;
+        }
+        return { upper, middle, lower };
+    }
+
     function updateKPI(ticker, coin) {
         const bar = document.getElementById("kpiBar");
         if (!ticker) return;
@@ -331,6 +344,17 @@
         if (currentIndicators.includes("sma20") && candles.length>=20) { let sma20=computeSMA(closes,20); let line=candleChart.addLineSeries({color:'#ff66cc',lineWidth:1,title:'SMA20',priceLineVisible:false,lastValueVisible:false}); line.setData(sma20.map((v,i)=>({time:candles[i].time,value:v}))); indicatorLines.sma20=line; }
         if (currentIndicators.includes("vwap") && candles.length>0) { let vwap=computeVWAP(candles); let line=candleChart.addLineSeries({color:'#ffaa33',lineWidth:1,lineStyle:LightweightCharts.LineStyle.Solid,title:'VWAP',priceLineVisible:false,lastValueVisible:false}); line.setData(vwap.map((v,i)=>({time:candles[i].time,value:v}))); indicatorLines.vwap=line; }
         if (currentIndicators.includes("supertrend") && candles.length>=10) { let st=computeSuperTrend(candles,10,3); let line=candleChart.addLineSeries({color:'#ff44ff',lineWidth:1,title:'SuperTrend',priceLineVisible:false,lastValueVisible:false}); line.setData(st.map((v,i)=>({time:candles[i].time,value:v}))); indicatorLines.supertrend=line; }
+        if (currentIndicators.includes("bb") && candles.length>=20) {
+            const bb=computeBollingerBands(closes,20,2);
+            const validFrom = bb.upper.findIndex(v=>v!==null);
+            const bbUpper=candleChart.addLineSeries({color:'#aaddff',lineWidth:1,title:'BB Upper',priceLineVisible:false,lastValueVisible:false});
+            const bbMiddle=candleChart.addLineSeries({color:'#ffffff',lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,title:'BB Mid',priceLineVisible:false,lastValueVisible:false});
+            const bbLower=candleChart.addLineSeries({color:'#aaddff',lineWidth:1,title:'BB Lower',priceLineVisible:false,lastValueVisible:false});
+            bbUpper.setData(bb.upper.map((v,i)=>v!==null?{time:candles[i].time,value:v}:null).filter(Boolean));
+            bbMiddle.setData(bb.middle.map((v,i)=>v!==null?{time:candles[i].time,value:v}:null).filter(Boolean));
+            bbLower.setData(bb.lower.map((v,i)=>v!==null?{time:candles[i].time,value:v}:null).filter(Boolean));
+            indicatorLines.bbUpper=bbUpper; indicatorLines.bbMiddle=bbMiddle; indicatorLines.bbLower=bbLower;
+        }
 
         // Markers
         if (window.markerLines) window.markerLines.forEach(l=>candleChart.removeSeries(l));
@@ -354,7 +378,7 @@
         hlDiv.innerHTML = `<label><input type="checkbox" value="24h"> 24h High/Low</label><label><input type="checkbox" value="1h"> 1h High/Low</label><label><input type="checkbox" value="5m"> 5m High/Low</label><label><input type="checkbox" value="15m"> 15m High/Low</label>`;
         hlDiv.querySelectorAll('input').forEach(cb => cb.addEventListener('change', () => { currentHlMarkers = getCheckValues("hlMarkersGroup"); if(currentCoin) fetchDataAndUpdate(); }));
         const indDiv = document.getElementById("indicatorsGroup");
-        indDiv.innerHTML = `<label><input type="checkbox" value="ema9"> EMA9</label><label><input type="checkbox" value="ema21"> EMA21</label><label><input type="checkbox" value="sma20"> SMA20</label><label><input type="checkbox" value="vwap"> VWAP</label><label><input type="checkbox" value="supertrend"> SuperTrend</label>`;
+        indDiv.innerHTML = `<label><input type="checkbox" value="ema9"> EMA9</label><label><input type="checkbox" value="ema21"> EMA21</label><label><input type="checkbox" value="sma20"> SMA20</label><label><input type="checkbox" value="vwap"> VWAP</label><label><input type="checkbox" value="supertrend"> SuperTrend</label><label><input type="checkbox" value="bb"> BB (20,2)</label>`;
         indDiv.querySelectorAll('input').forEach(cb => cb.addEventListener('change', () => { currentIndicators = getCheckValues("indicatorsGroup"); if(currentCoin) fetchDataAndUpdate(); }));
         document.getElementById("savePresetBtn").onclick = () => { if(currentCoin) { savePreset(currentCoin, {interval:currentInterval, indicators:currentIndicators, hlMarkers:currentHlMarkers}); alert(`Preset saved for ${currentCoin}`); } };
         document.getElementById("resetPresetBtn").onclick = () => { if(currentCoin) { applyPreset(currentCoin); if(currentCoin) fetchDataAndUpdate().then(()=>resetChartView()); } };
