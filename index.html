@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Live Crypto Chart + FIDA | 7/17 EMA Cross Alert</title>
+<title>Live Crypto Chart + FIDA | 7/17 EMA Cross Alerts (Bullish + Bearish)</title>
 <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 <style>
@@ -58,456 +58,435 @@ button:hover { background: #3a3a3a; }
 </head>
 <body>
 <div class="container">
-    <!-- Selector View -->
-    <div id="selectorView" class="selector-page">
-        <div class="selector-title">Live Crypto Chart</div>
-        <div class="selector-sub">Select a cryptocurrency to view its live candlestick chart</div>
-        <div class="coins-grid" id="coinsGrid"></div>
-        <div class="footer-note">Powered by Binance API | Data refreshes every 5s</div>
+  <!-- Selector View -->
+  <div id="selectorView" class="selector-page">
+    <div class="selector-title">Live Crypto Chart</div>
+    <div class="selector-sub">Select a cryptocurrency to view its live candlestick chart</div>
+    <div class="coins-grid" id="coinsGrid"></div>
+    <div class="footer-note">Powered by Binance API | Data refreshes every 5s</div>
+  </div>
+
+  <!-- Chart View -->
+  <div id="chartView" class="chart-page">
+    <div class="top-bar">
+      <button class="back-btn" id="backBtn"><i class="fas fa-arrow-left"></i> Back</button>
+      <div class="coin-title" id="chartTitle">FIDA/USDT Live Chart</div>
+      <div class="est-clock" id="estClock"></div>
+    </div>
+    <div class="kpi-bar" id="kpiBar"></div>
+    <div class="controls-row">
+      <div class="control-group">
+        <span class="control-label">Interval:</span>
+        <div class="radio-group" id="intervalGroup"></div>
+      </div>
+      <div class="control-group">
+        <span class="control-label">High/Low Markers:</span>
+        <div class="check-group" id="hlMarkersGroup"></div>
+      </div>
+    </div>
+    <div class="controls-row">
+      <div class="control-group">
+        <span class="control-label">Indicators:</span>
+        <div class="check-group" id="indicatorsGroup"></div>
+      </div>
+      <div class="control-group">
+        <button id="savePresetBtn">💾 Save Preset</button>
+        <button id="resetPresetBtn">🔄 Reset Preset</button>
+        <button id="resetViewBtn">🔍 Reset View</button>
+      </div>
+      <div class="entry-group">
+        <span class="control-label">Entry Price (USDT):</span>
+        <input type="number" id="entryPriceInput" class="entry-input" placeholder="Set entry" step="any">
+        <span id="pnlDisplay" class="pnl-display">No entry set</span>
+      </div>
     </div>
 
-    <!-- Chart View -->
-    <div id="chartView" class="chart-page">
-        <div class="top-bar">
-            <button class="back-btn" id="backBtn"><i class="fas fa-arrow-left"></i> Back</button>
-            <div class="coin-title" id="chartTitle">FIDA/USDT Live Chart</div>
-            <div class="est-clock" id="estClock"></div>
-        </div>
-        <div class="kpi-bar" id="kpiBar"></div>
-
-        <div class="controls-row">
-            <div class="control-group">
-                <span class="control-label">Interval:</span>
-                <div class="radio-group" id="intervalGroup"></div>
-            </div>
-            <div class="control-group">
-                <span class="control-label">High/Low Markers:</span>
-                <div class="check-group" id="hlMarkersGroup"></div>
-            </div>
-        </div>
-
-        <div class="controls-row">
-            <div class="control-group">
-                <span class="control-label">Indicators:</span>
-                <div class="check-group" id="indicatorsGroup"></div>
-            </div>
-            <div class="control-group">
-                <button id="savePresetBtn">💾 Save Preset</button>
-                <button id="resetPresetBtn">🔄 Reset Preset</button>
-                <button id="resetViewBtn">🔍 Reset View</button>
-            </div>
-            <div class="entry-group">
-                <span class="control-label">Entry Price (USDT):</span>
-                <input type="number" id="entryPriceInput" class="entry-input" placeholder="Set entry" step="any">
-                <span id="pnlDisplay" class="pnl-display">No entry set</span>
-            </div>
-        </div>
-
-        <!-- Telegram alert config -->
-        <div class="tg-config">
-            <span class="tg-config-title">📨 Telegram Alerts (7/17 EMA cross with angle >20°)</span>
-            <input type="text" id="tgToken" class="tg-input tg-token-input" placeholder="Bot Token: 7412345678:AAFxxx..." />
-            <input type="text" id="tgChatId" class="tg-input tg-chatid-input" placeholder="Chat ID: 123456789" />
-            <button id="tgTestBtn" style="border-color:#29a8e0;color:#29a8e0;">🔔 Test</button>
-            <span id="tgStatus" class="tg-status idle">Not configured</span>
-        </div>
-
-        <div class="chart-container">
-            <div id="candle-chart"></div>
-            <div id="volume-chart"></div>
-        </div>
-        <div class="source-label" id="sourceLabel">Binance | Loading...</div>
+    <!-- Telegram alert config -->
+    <div class="tg-config">
+      <span class="tg-config-title">📨 Telegram Alerts (7/17 EMA cross with angle >20°)</span>
+      <input type="text" id="tgToken" class="tg-input tg-token-input" placeholder="Bot Token: 7412345678:AAFxxx..." />
+      <input type="text" id="tgChatId" class="tg-input tg-chatid-input" placeholder="Chat ID: 123456789" />
+      <button id="tgTestBtn" style="border-color:#29a8e0;color:#29a8e0;">🔔 Test</button>
+      <span id="tgStatus" class="tg-status idle">Not configured</span>
     </div>
+
+    <div class="chart-container">
+      <div id="candle-chart"></div>
+      <div id="volume-chart"></div>
+    </div>
+    <div class="source-label" id="sourceLabel">Binance | Loading...</div>
+  </div>
 </div>
 
 <script>
-    // ----------------------------- 42+1 COINS (added FIDA) -----------------------------
-    const CRYPTO_LIST = {
-        "FIDA":  { name: "Bonfida",           color: "#8A2BE2" },
-        "BTC":   { name: "Bitcoin",          color: "#F7931A" }, "ETH":   { name: "Ethereum",         color: "#627EEA" },
-        "SOL":   { name: "Solana",           color: "#00FFA3" }, "BNB":   { name: "Binance Coin",     color: "#F3BA2F" },
-        "TRUMP": { name: "TRUMP Coin",       color: "#FFD700" }, "XRP":   { name: "XRP",              color: "#00AAFF" },
-        "DOGE":  { name: "Dogecoin",         color: "#C3A634" }, "USDC":  { name: "USD Coin",         color: "#2775CA" },
-        "ADA":   { name: "Cardano",          color: "#0033AD" }, "AVAX":  { name: "Avalanche",        color: "#E84142" },
-        "SHIB":  { name: "Shiba Inu",        color: "#FF7300" }, "LTC":   { name: "Litecoin",         color: "#A5A9B4" },
-        "UNI":   { name: "Uniswap",          color: "#FF007A" }, "LINK":  { name: "Chainlink",        color: "#2A5ADA" },
-        "ATOM":  { name: "Cosmos",           color: "#2E3148" }, "FIL":   { name: "Filecoin",         color: "#0090FF" },
-        "APT":   { name: "Aptos",            color: "#6B90D8" }, "ARB":   { name: "Arbitrum",         color: "#28A0F0" },
-        "OP":    { name: "Optimism",         color: "#FF0420" }, "NEAR":  { name: "NEAR Protocol",    color: "#000000" },
-        "INJ":   { name: "Injective",        color: "#00D8FF" }, "TRX":   { name: "TRON",             color: "#FF4444" },
-        "VET":   { name: "VeChain",          color: "#00FF88" }, "KAS":   { name: "Kaspa",            color: "#CC44FF" },
-        "XLM":   { name: "Stellar",          color: "#000000" }, "ZEC":   { name: "Zcash",            color: "#E6A23C" },
-        "HBAR":  { name: "Hedera",           color: "#00B4D8" }, "DAI":   { name: "Dai",              color: "#F5AC37" },
-        "FDUSD": { name: "First Digital USD",color: "#6B8E23" }, "USDE":  { name: "USDe",             color: "#9B59B6" },
-        "ENA":   { name: "ENA",              color: "#2C3E50" }, "PEPE":  { name: "Pepe",             color: "#BDB76B" },
-        "SUI":   { name: "Sui",              color: "#6FCF97" }, "CAKE":  { name: "PancakeSwap",      color: "#D1884F" },
-        "KNC":   { name: "Kyber Network",    color: "#30E8C0" }, "XAUt":  { name: "Tether Gold",      color: "#F39606" },
-        "FET":   { name: "Fetch.ai",         color: "#4F46E5" }, "RNDR":  { name: "Render",           color: "#FFA500" },
-        "TIA":   { name: "Celestia",         color: "#F4A261" }, "MNT":   { name: "Mantle",           color: "#264653" },
-        "STRK":  { name: "Starknet",         color: "#E9C46A" }
-    };
-    const SYMBOL_MAP = Object.fromEntries(Object.keys(CRYPTO_LIST).map(k => [k, k + "USDT"]));
-    const INTERVALS = ["1m","2m","3m","5m","10m","15m","30m","1h","1d"];
-    const DEFAULT_INTERVAL = "1m";
-    const REFRESH_MS = 5000;
-    const MAX_CANDLES = 100;
+// ----------------------------- 42+ COINS (FIDA included) -----------------------------
+const CRYPTO_LIST = {
+  "FIDA": { name: "Bonfida", color: "#8A2BE2" },
+  "BTC": { name: "Bitcoin", color: "#F7931A" }, "ETH": { name: "Ethereum", color: "#627EEA" },
+  "SOL": { name: "Solana", color: "#00FFA3" }, "BNB": { name: "Binance Coin", color: "#F3BA2F" },
+  "TRUMP": { name: "TRUMP Coin", color: "#FFD700" }, "XRP": { name: "XRP", color: "#00AAFF" },
+  "DOGE": { name: "Dogecoin", color: "#C3A634" }, "USDC": { name: "USD Coin", color: "#2775CA" },
+  "ADA": { name: "Cardano", color: "#0033AD" }, "AVAX": { name: "Avalanche", color: "#E84142" },
+  "SHIB": { name: "Shiba Inu", color: "#FF7300" }, "LTC": { name: "Litecoin", color: "#A5A9B4" },
+  "UNI": { name: "Uniswap", color: "#FF007A" }, "LINK": { name: "Chainlink", color: "#2A5ADA" },
+  "ATOM": { name: "Cosmos", color: "#2E3148" }, "FIL": { name: "Filecoin", color: "#0090FF" },
+  "APT": { name: "Aptos", color: "#6B90D8" }, "ARB": { name: "Arbitrum", color: "#28A0F0" },
+  "OP": { name: "Optimism", color: "#FF0420" }, "NEAR": { name: "NEAR Protocol", color: "#000000" },
+  "INJ": { name: "Injective", color: "#00D8FF" }, "TRX": { name: "TRON", color: "#FF4444" },
+  "VET": { name: "VeChain", color: "#00FF88" }, "KAS": { name: "Kaspa", color: "#CC44FF" },
+  "XLM": { name: "Stellar", color: "#000000" }, "ZEC": { name: "Zcash", color: "#E6A23C" },
+  "HBAR": { name: "Hedera", color: "#00B4D8" }, "DAI": { name: "Dai", color: "#F5AC37" },
+  "FDUSD": { name: "First Digital USD",color: "#6B8E23" }, "USDE": { name: "USDe", color: "#9B59B6" },
+  "ENA": { name: "ENA", color: "#2C3E50" }, "PEPE": { name: "Pepe", color: "#BDB76B" },
+  "SUI": { name: "Sui", color: "#6FCF97" }, "CAKE": { name: "PancakeSwap", color: "#D1884F" },
+  "KNC": { name: "Kyber Network", color: "#30E8C0" }, "XAUt": { name: "Tether Gold", color: "#F39606" },
+  "FET": { name: "Fetch.ai", color: "#4F46E5" }, "RNDR": { name: "Render", color: "#FFA500" },
+  "TIA": { name: "Celestia", color: "#F4A261" }, "MNT": { name: "Mantle", color: "#264653" },
+  "STRK": { name: "Starknet", color: "#E9C46A" }
+};
+const SYMBOL_MAP = Object.fromEntries(Object.keys(CRYPTO_LIST).map(k => [k, k + "USDT"]));
+const INTERVALS = ["1m","2m","3m","5m","10m","15m","30m","1h","1d"];
+const DEFAULT_INTERVAL = "1m";
+const REFRESH_MS = 5000;
+const MAX_CANDLES = 100;
 
-    let currentCoin = "FIDA";           // <-- DEFAULT COIN = FIDA
-    let currentInterval = DEFAULT_INTERVAL;
-    let currentIndicators = ["ema7","ema17"];   // default: 7 & 17 EMA for cross detection
-    let currentHlMarkers = [];
+let currentCoin = "FIDA";
+let currentInterval = DEFAULT_INTERVAL;
+let currentIndicators = ["ema7","ema17"];
+let currentHlMarkers = [];
+let entryPrice = null, tickerData = null, candleData = [], priceHistory = [], pollTimer = null;
+let candleChart = null, volumeChart = null, candleSeries = null, volumeSeries = null, indicatorLines = {};
 
-    let entryPrice = null, tickerData = null, candleData = [], priceHistory = [], pollTimer = null;
-    let candleChart = null, volumeChart = null, candleSeries = null, volumeSeries = null, indicatorLines = {};
+// ---------- EMA cross alert state (bullish + bearish) ----------
+let prevEMA7 = null, prevEMA17 = null; // not strictly required but kept for legacy
+const alertCooldowns = {};
 
-    // ----- EMA 7 & 17 cross alert state -----
-    let lastCrossAlertTime = 0;
-    let prevEMA7 = null, prevEMA17 = null;
+// ---------- Telegram helpers ----------
+function getTgToken() { return document.getElementById("tgToken")?.value.trim() || ""; }
+function getTgChatId() { return document.getElementById("tgChatId")?.value.trim() || ""; }
+function setTgStatus(msg, type) { let el = document.getElementById("tgStatus"); if(el) { el.textContent = msg; el.className = "tg-status " + type; } }
 
-    // ----- Telegram helpers -----
-    const alertCooldowns = {};
-    function getTgToken() { return document.getElementById("tgToken")?.value.trim() || ""; }
-    function getTgChatId() { return document.getElementById("tgChatId")?.value.trim() || ""; }
-    function setTgStatus(msg, type) { let el = document.getElementById("tgStatus"); if(el) { el.textContent = msg; el.className = "tg-status " + type; } }
-    async function sendTelegramAlert(message, alertKey = "default", cooldownMs = 30000) {
-        const token = getTgToken(), chatId = getTgChatId();
-        if (!token || !chatId) { setTgStatus("Token/Chat ID missing", "err"); return false; }
-        const now = Date.now();
-        if (alertCooldowns[alertKey] && now - alertCooldowns[alertKey] < cooldownMs) return false;
-        alertCooldowns[alertKey] = now;
-        try {
-            const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-                method: "POST", headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: "HTML" })
-            });
-            const data = await res.json();
-            if (data.ok) setTgStatus("Sent ✓ " + new Date().toLocaleTimeString(), "ok");
-            else setTgStatus("Error: " + (data.description || "unknown"), "err");
-            return data.ok;
-        } catch(e) { setTgStatus("Network error", "err"); return false; }
+async function sendTelegramAlert(message, alertKey, cooldownMs = 60000) {
+  const token = getTgToken(), chatId = getTgChatId();
+  if (!token || !chatId) { setTgStatus("Token/Chat ID missing", "err"); return false; }
+  const now = Date.now();
+  if (alertCooldowns[alertKey] && now - alertCooldowns[alertKey] < cooldownMs) return false;
+  alertCooldowns[alertKey] = now;
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text: message, parse_mode: "HTML" })
+    });
+    const data = await res.json();
+    if (data.ok) setTgStatus("Sent ✓ " + new Date().toLocaleTimeString(), "ok");
+    else setTgStatus("Error: " + (data.description || "unknown"), "err");
+    return data.ok;
+  } catch(e) { setTgStatus("Network error", "err"); return false; }
+}
+
+// Angle calculation (degrees) from slope of last 2 points
+function computeAngle(lastValue, prevValue, timeDiffSec) {
+  if (timeDiffSec <= 0) return 0;
+  const deltaY = lastValue - prevValue;
+  const deltaX = timeDiffSec;
+  const slope = deltaY / deltaX;
+  const angleRad = Math.atan(slope);
+  return angleRad * (180 / Math.PI);
+}
+
+// ---------- EMA 7/17 CROSS DETECTION: BULLISH + BEARISH with ANGLE >20° ----------
+function checkEMA7_17CrossAndAlert(candles, intervalSec) {
+  if (!candles || candles.length < 30) return;
+  const closes = candles.map(c => c.close);
+  const ema7 = computeEMA(closes, 7);
+  const ema17 = computeEMA(closes, 17);
+  if (ema7.length < 2 || ema17.length < 2) return;
+
+  const lastIdx = ema7.length - 1;
+  const prevIdx = lastIdx - 1;
+  const currentEMA7 = ema7[lastIdx];
+  const currentEMA17 = ema17[lastIdx];
+  const prevEMA7Val = ema7[prevIdx];
+  const prevEMA17Val = ema17[prevIdx];
+  
+  // --- Bullish cross: 7 EMA crosses ABOVE 17 EMA from below (previous 7 <= 17, current 7 > 17)
+  const bullishCross = (prevEMA7Val <= prevEMA17Val) && (currentEMA7 > currentEMA17);
+  if (bullishCross) {
+    const angle7 = computeAngle(currentEMA7, prevEMA7Val, intervalSec);
+    if (angle7 > 20) {
+      const now = new Date();
+      const timeStr = now.toLocaleString("en-US", { timeZone: "America/New_York" });
+      const price = candles[lastIdx].close.toFixed(6);
+      const msg = `📈 <b>BULLISH EMA CROSS (7/17)</b>\n` +
+                  `Coin: ${currentCoin}/USDT\n` +
+                  `Price: $${price}\n` +
+                  `7 EMA crossed ABOVE 17 EMA (from below)\n` +
+                  `Angle: ${angle7.toFixed(1)}° (>20°)\n` +
+                  `Interval: ${currentInterval}\n` +
+                  `Time (EST): ${timeStr}`;
+      sendTelegramAlert(msg, `ema_cross_bullish_${currentCoin}`, 60000);
     }
-
-    // ----- Angle calculation (degrees) from slope of last 2 points -----
-    function computeAngle(lastValue, prevValue, timeDiffSec) {
-        // timeDiffSec = difference in seconds between the two candles (e.g., 60 for 1m interval)
-        if (timeDiffSec <= 0) return 0;
-        const deltaY = lastValue - prevValue;
-        const deltaX = timeDiffSec;
-        const slope = deltaY / deltaX;
-        const angleRad = Math.atan(slope);
-        return angleRad * (180 / Math.PI);
+  }
+  
+  // --- Bearish cross: 17 EMA crosses ABOVE 7 EMA from below (previous 17 <= 7, current 17 > 7)
+  const bearishCross = (prevEMA17Val <= prevEMA7Val) && (currentEMA17 > currentEMA7);
+  if (bearishCross) {
+    const angle17 = computeAngle(currentEMA17, prevEMA17Val, intervalSec);
+    if (angle17 > 20) {
+      const now = new Date();
+      const timeStr = now.toLocaleString("en-US", { timeZone: "America/New_York" });
+      const price = candles[lastIdx].close.toFixed(6);
+      const msg = `📉 <b>BEARISH EMA CROSS (17/7)</b>\n` +
+                  `Coin: ${currentCoin}/USDT\n` +
+                  `Price: $${price}\n` +
+                  `17 EMA crossed ABOVE 7 EMA (from below)\n` +
+                  `Angle: ${angle17.toFixed(1)}° (>20°)\n` +
+                  `Interval: ${currentInterval}\n` +
+                  `Time (EST): ${timeStr}`;
+      sendTelegramAlert(msg, `ema_cross_bearish_${currentCoin}`, 60000);
     }
+  }
+}
 
-    // ----- EMA 7/17 crossover check with angle >20° -----
-    function checkEMA7_17CrossAndAlert(candles, intervalSec) {
-        if (!candles || candles.length < 30) return;
-        const closes = candles.map(c => c.close);
-        const ema7 = computeEMA(closes, 7);
-        const ema17 = computeEMA(closes, 17);
-        if (ema7.length < 2 || ema17.length < 2) return;
-        const lastIdx = ema7.length - 1;
-        const prevIdx = lastIdx - 1;
-        const currentEMA7 = ema7[lastIdx];
-        const currentEMA17 = ema17[lastIdx];
-        const prevEMA7Val = ema7[prevIdx];
-        const prevEMA17Val = ema17[prevIdx];
+// localStorage presets
+function loadPresets() { const s = localStorage.getItem("crypto_presets"); return s ? JSON.parse(s) : {}; }
+function savePreset(coin, preset) { let p = loadPresets(); p[coin] = preset; localStorage.setItem("crypto_presets", JSON.stringify(p)); }
+function getPreset(coin) { return loadPresets()[coin] || null; }
+function updateCheckGroup(groupId, values) { document.querySelectorAll(`#${groupId} input[type="checkbox"]`).forEach(cb => cb.checked = values.includes(cb.value)); }
+function getCheckValues(groupId) { return Array.from(document.querySelectorAll(`#${groupId} input[type="checkbox"]:checked`)).map(cb => cb.value); }
+function applyPreset(coin) {
+  const preset = getPreset(coin);
+  if (preset) {
+    currentInterval = preset.interval || DEFAULT_INTERVAL;
+    currentIndicators = preset.indicators || ["ema7","ema17"];
+    currentHlMarkers = preset.hlMarkers || [];
+  } else {
+    currentInterval = DEFAULT_INTERVAL;
+    currentIndicators = ["ema7","ema17"];
+    currentHlMarkers = [];
+  }
+  document.querySelectorAll('input[name="interval"]').forEach(r => { if (r.value === currentInterval) r.checked = true; });
+  updateCheckGroup("indicatorsGroup", currentIndicators);
+  updateCheckGroup("hlMarkersGroup", currentHlMarkers);
+  if (currentCoin) fetchDataAndUpdate();
+}
+function resetChartView() { if (candleChart && volumeChart) { candleChart.timeScale().fitContent(); volumeChart.timeScale().fitContent(); } }
+function syncVolumeRange() { if (!candleChart || !volumeChart) return; const range = candleChart.timeScale().getVisibleLogicalRange(); if (range) volumeChart.timeScale().setVisibleLogicalRange(range); }
 
-        // Crossover: 7 crosses above 17 (current 7 > 17, previous 7 <= 17)
-        const crossUp = (prevEMA7Val <= prevEMA17Val) && (currentEMA7 > currentEMA17);
-        if (crossUp) {
-            // Compute angle of 7 EMA line (last two points)
-            const angle = computeAngle(currentEMA7, prevEMA7Val, intervalSec);
-            if (angle > 20) {
-                const now = new Date();
-                const timeStr = now.toLocaleString("en-US", { timeZone: "America/New_York" });
-                const price = candles[lastIdx].close.toFixed(6);
-                const msg = `📈 <b>EMA CROSS SIGNAL (7/17)</b>\n` +
-                            `Coin: ${currentCoin}/USDT\n` +
-                            `Price: $${price}\n` +
-                            `7 EMA crossed ABOVE 17 EMA\n` +
-                            `Angle: ${angle.toFixed(1)}° (>20°)\n` +
-                            `Interval: ${currentInterval}\n` +
-                            `Time (EST): ${timeStr}`;
-                sendTelegramAlert(msg, `ema_cross_${currentCoin}`, 60000); // 1 min cooldown per coin
-            }
-        }
+function buildCoinSelector() {
+  const grid = document.getElementById("coinsGrid");
+  grid.innerHTML = "";
+  for (const [symbol, info] of Object.entries(CRYPTO_LIST)) {
+    const card = document.createElement("div");
+    card.className = "coin-card";
+    card.style.borderColor = info.color;
+    card.innerHTML = `<div class="coin-symbol" style="color:${info.color}">${symbol}</div><div class="coin-name">${info.name}</div><div class="coin-pair">USDT</div>`;
+    card.onclick = () => selectCoin(symbol);
+    grid.appendChild(card);
+  }
+}
+
+function selectCoin(coin) {
+  if (pollTimer) clearInterval(pollTimer);
+  currentCoin = coin;
+  applyPreset(coin);
+  // Reset alert cooldowns for new coin (optional, keep per-coin keys)
+  document.getElementById("selectorView").style.display = "none";
+  document.getElementById("chartView").style.display = "block";
+  document.getElementById("chartTitle").innerHTML = `${CRYPTO_LIST[coin].name} (${coin}/USDT) Live Chart`;
+  document.getElementById("chartTitle").style.color = CRYPTO_LIST[coin].color;
+  candleData = []; priceHistory = []; entryPrice = null;
+  document.getElementById("entryPriceInput").value = "";
+  document.getElementById("pnlDisplay").innerHTML = "No entry set";
+  if (candleSeries) candleSeries.setData([]);
+  if (volumeSeries) volumeSeries.setData([]);
+  for (let key in indicatorLines) if (indicatorLines[key]) candleChart?.removeSeries(indicatorLines[key]);
+  indicatorLines = {};
+  pollTimer = setInterval(() => fetchDataAndUpdate(), REFRESH_MS);
+  fetchDataAndUpdate().then(() => resetChartView());
+}
+
+function goBack() {
+  if (pollTimer) clearInterval(pollTimer);
+  pollTimer = null;
+  currentCoin = null;
+  document.getElementById("selectorView").style.display = "block";
+  document.getElementById("chartView").style.display = "none";
+}
+
+async function fetchCandles(symbol, interval) {
+  const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${MAX_CANDLES}`);
+  const data = await res.json();
+  return data.map(k => ({ time: Math.floor(k[0]/1000), open: parseFloat(k[1]), high: parseFloat(k[2]), low: parseFloat(k[3]), close: parseFloat(k[4]), volume: parseFloat(k[5]) }));
+}
+async function fetchTicker(symbol) {
+  const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
+  const data = await res.json();
+  return { ltp: parseFloat(data.lastPrice), change_pct: parseFloat(data.priceChangePercent), high_24h: parseFloat(data.highPrice), low_24h: parseFloat(data.lowPrice), volume_24h: parseFloat(data.volume), bid: parseFloat(data.bidPrice), ask: parseFloat(data.askPrice) };
+}
+
+// Indicator calculations
+function computeEMA(values, period) { let k=2/(period+1), ema=[], prev=values[0]; for(let i=0;i<values.length;i++) { if(i===0) ema[i]=values[i]; else ema[i]=values[i]*k+prev*(1-k); prev=ema[i]; } return ema; }
+function computeSMA(values, period) { let sma=[]; for(let i=0;i<values.length;i++) { if(i<period-1) sma[i]=null; else { let sum=0; for(let j=i-period+1;j<=i;j++) sum+=values[j]; sma[i]=sum/period; } } return sma; }
+function computeVWAP(candles) { let cumPV=0, cumVol=0, vwap=[]; for(let i=0;i<candles.length;i++) { const typical=(candles[i].high+candles[i].low+candles[i].close)/3; cumPV+=typical*candles[i].volume; cumVol+=candles[i].volume; vwap[i]=cumVol?cumPV/cumVol:candles[i].close; } return vwap; }
+function computeSuperTrend(candles, period=10, mult=3) {
+  let tr=[]; for(let i=0;i<candles.length;i++) { if(i===0) tr[i]=candles[i].high-candles[i].low; else { const hl=candles[i].high-candles[i].low, hc=Math.abs(candles[i].high-candles[i-1].close), lc=Math.abs(candles[i].low-candles[i-1].close); tr[i]=Math.max(hl,hc,lc); } }
+  let atr=[]; for(let i=0;i<candles.length;i++) { if(i<period-1) atr[i]=null; else { let sum=0; for(let j=i-period+1;j<=i;j++) sum+=tr[j]; atr[i]=sum/period; } }
+  let src=candles.map(c=>(c.high+c.low)/2), upper=[], lower=[];
+  for(let i=0;i<candles.length;i++) { upper[i]=src[i]+(atr[i]?mult*atr[i]:0); lower[i]=src[i]-(atr[i]?mult*atr[i]:0); }
+  let st=[], trend=[]; for(let i=0;i<candles.length;i++) { if(i<period) { st[i]=null; trend[i]=1; } else { if(trend[i-1]===1) { if(candles[i].close<=lower[i]) { trend[i]=-1; st[i]=upper[i]; } else { trend[i]=1; st[i]=(upper[i]<st[i-1])?upper[i]:st[i-1]; } } else { if(candles[i].close>=upper[i]) { trend[i]=1; st[i]=lower[i]; } else { trend[i]=-1; st[i]=(lower[i]>st[i-1])?lower[i]:st[i-1]; } } } }
+  return st;
+}
+
+function updateKPI(ticker, coin) {
+  const bar = document.getElementById("kpiBar");
+  if (!ticker) return;
+  const color = CRYPTO_LIST[coin].color;
+  const chgColor = ticker.change_pct >= 0 ? "#00ff88" : "#ff4444";
+  let trend = "--";
+  if (priceHistory.length >= 2) trend = priceHistory[priceHistory.length-1] > priceHistory[priceHistory.length-2] ? "UP" : (priceHistory[priceHistory.length-1] < priceHistory[priceHistory.length-2] ? "DN" : "--");
+  const trendColor = trend === "UP" ? "#00ff88" : (trend === "DN" ? "#ff4444" : "#888");
+  bar.innerHTML = `
+    <div class="kpi-card" style="border-color:${color}"><div class="kpi-label">LTP</div><div class="kpi-value" style="color:${color}">$${ticker.ltp.toFixed(6)}</div></div>
+    <div class="kpi-card" style="border-color:${chgColor}"><div class="kpi-label">24h Chng</div><div class="kpi-value" style="color:${chgColor}">${ticker.change_pct.toFixed(2)}%</div></div>
+    <div class="kpi-card" style="border-color:${trendColor}"><div class="kpi-label">Trend</div><div class="kpi-value" style="color:${trendColor}">${trend}</div></div>
+    <div class="kpi-card" style="border-color:#00ccff"><div class="kpi-label">24h High</div><div class="kpi-value" style="color:#00ccff">$${ticker.high_24h.toFixed(6)}</div></div>
+    <div class="kpi-card" style="border-color:#ff8800"><div class="kpi-label">24h Low</div><div class="kpi-value" style="color:#ff8800">$${ticker.low_24h.toFixed(6)}</div></div>
+    <div class="kpi-card" style="border-color:#aaffaa"><div class="kpi-label">Bid</div><div class="kpi-value" style="color:#aaffaa">$${ticker.bid.toFixed(6)}</div></div>
+    <div class="kpi-card" style="border-color:#ffaaaa"><div class="kpi-label">Ask</div><div class="kpi-value" style="color:#ffaaaa">$${ticker.ask.toFixed(6)}</div></div>
+  `;
+}
+
+async function fetchDataAndUpdate() {
+  if (!currentCoin) return;
+  const symbol = SYMBOL_MAP[currentCoin];
+  try {
+    const [candles, ticker] = await Promise.all([fetchCandles(symbol, currentInterval), fetchTicker(symbol)]);
+    if (!candles.length) return;
+    candleData = candles; tickerData = ticker;
+    priceHistory.push(ticker.ltp); if (priceHistory.length > 5) priceHistory.shift();
+    updateKPI(ticker, currentCoin);
+    document.getElementById("sourceLabel").innerHTML = `Binance | ${currentCoin}/USDT | ${currentInterval} | Updated: ${new Date().toLocaleTimeString()}`;
+    if (entryPrice !== null && !isNaN(entryPrice)) {
+      const pnlAbs = ticker.ltp - entryPrice, pnlPct = (pnlAbs / entryPrice) * 100;
+      document.getElementById("pnlDisplay").innerHTML = `<span style="color:${pnlAbs>=0?'#00ff88':'#ff4444'}">PnL: $${pnlAbs.toFixed(6)} (${pnlPct.toFixed(2)}%)</span>`;
+    } else document.getElementById("pnlDisplay").innerHTML = "No entry set";
+    renderCandles(candles, ticker);
+
+    // EMA 7/17 cross detection (only if both EMAs enabled)
+    if (currentIndicators.includes("ema7") && currentIndicators.includes("ema17")) {
+      let intervalSeconds = 60;
+      if (currentInterval === "1m") intervalSeconds = 60;
+      else if (currentInterval === "2m") intervalSeconds = 120;
+      else if (currentInterval === "3m") intervalSeconds = 180;
+      else if (currentInterval === "5m") intervalSeconds = 300;
+      else if (currentInterval === "10m") intervalSeconds = 600;
+      else if (currentInterval === "15m") intervalSeconds = 900;
+      else if (currentInterval === "30m") intervalSeconds = 1800;
+      else if (currentInterval === "1h") intervalSeconds = 3600;
+      else if (currentInterval === "1d") intervalSeconds = 86400;
+      checkEMA7_17CrossAndAlert(candles, intervalSeconds);
     }
+  } catch(e) { console.error(e); }
+}
 
-    // localStorage presets
-    function loadPresets() { const s = localStorage.getItem("crypto_presets"); return s ? JSON.parse(s) : {}; }
-    function savePreset(coin, preset) { let p = loadPresets(); p[coin] = preset; localStorage.setItem("crypto_presets", JSON.stringify(p)); }
-    function getPreset(coin) { return loadPresets()[coin] || null; }
+function renderCandles(candles, ticker) {
+  if (!candleChart) {
+    candleChart = LightweightCharts.createChart(document.getElementById('candle-chart'), {
+      layout: { background: { color: '#111' }, textColor: '#ccc' },
+      grid: { vertLines: { color: '#1e1e1e' }, horzLines: { color: '#1e1e1e' } },
+      crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+      rightPriceScale: { borderColor: '#333', scaleMargins: { top: 0.1, bottom: 0.1 } },
+      timeScale: { borderColor: '#333', timeVisible: true, secondsVisible: false }
+    });
+    candleSeries = candleChart.addCandlestickSeries({ upColor: '#00ff88', downColor: '#ff4444', borderVisible: false, wickUpColor: '#00ff88', wickDownColor: '#ff4444' });
+    volumeChart = LightweightCharts.createChart(document.getElementById('volume-chart'), {
+      layout: { background: { color: '#111' }, textColor: '#ccc' },
+      grid: { vertLines: { color: '#1e1e1e' }, horzLines: { color: '#1e1e1e' } },
+      height: 150,
+      crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+      timeScale: { borderColor: '#333', timeVisible: true, visible: true }
+    });
+    volumeSeries = volumeChart.addHistogramSeries({ color: '#aaa', priceFormat: { type: 'volume' }, priceScaleId: '' });
+    let syncing = false;
+    candleChart.timeScale().subscribeVisibleLogicalRangeChange((range) => { if (!syncing && range) { syncing = true; volumeChart.timeScale().setVisibleLogicalRange(range); syncing = false; } });
+    volumeChart.timeScale().subscribeVisibleLogicalRangeChange((range) => { if (!syncing && range) { syncing = true; candleChart.timeScale().setVisibleLogicalRange(range); syncing = false; } });
+  }
+  const candleItems = candles.map(c => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }));
+  const volumeItems = candles.map(c => ({ time: c.time, value: c.volume, color: c.close >= c.open ? '#00ff88' : '#ff4444' }));
+  candleSeries.setData(candleItems);
+  volumeSeries.setData(volumeItems);
+  setTimeout(() => syncVolumeRange(), 10);
+  for (let key in indicatorLines) if (indicatorLines[key]) candleChart.removeSeries(indicatorLines[key]);
+  indicatorLines = {};
+  const closes = candles.map(c => c.close);
+  if (currentIndicators.includes("ema7") && candles.length >= 7) {
+    let ema7 = computeEMA(closes, 7);
+    let line = candleChart.addLineSeries({ color: '#ff66cc', lineWidth: 2, title: 'EMA7', priceLineVisible: false, lastValueVisible: false });
+    line.setData(ema7.map((v,i) => ({ time: candles[i].time, value: v })));
+    indicatorLines.ema7 = line;
+  }
+  if (currentIndicators.includes("ema17") && candles.length >= 17) {
+    let ema17 = computeEMA(closes, 17);
+    let line = candleChart.addLineSeries({ color: '#00ccff', lineWidth: 2, title: 'EMA17', priceLineVisible: false, lastValueVisible: false });
+    line.setData(ema17.map((v,i) => ({ time: candles[i].time, value: v })));
+    indicatorLines.ema17 = line;
+  }
+  if (currentIndicators.includes("sma20") && candles.length >= 20) {
+    let sma20 = computeSMA(closes, 20);
+    let line = candleChart.addLineSeries({ color: '#ffaa33', lineWidth: 1, title: 'SMA20', priceLineVisible: false, lastValueVisible: false });
+    line.setData(sma20.map((v,i) => ({ time: candles[i].time, value: v })));
+    indicatorLines.sma20 = line;
+  }
+  if (currentIndicators.includes("vwap") && candles.length > 0) {
+    let vwap = computeVWAP(candles);
+    let line = candleChart.addLineSeries({ color: '#ffaa33', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid, title: 'VWAP', priceLineVisible: false, lastValueVisible: false });
+    line.setData(vwap.map((v,i) => ({ time: candles[i].time, value: v })));
+    indicatorLines.vwap = line;
+  }
+  if (currentIndicators.includes("supertrend") && candles.length >= 10) {
+    let st = computeSuperTrend(candles,10,3);
+    let line = candleChart.addLineSeries({ color: '#ff44ff', lineWidth: 1, title: 'SuperTrend', priceLineVisible: false, lastValueVisible: false });
+    line.setData(st.map((v,i) => ({ time: candles[i].time, value: v })));
+    indicatorLines.supertrend = line;
+  }
+  if (window.markerLines) window.markerLines.forEach(l=>candleChart.removeSeries(l));
+  window.markerLines = [];
+  const addHLine = (price,color) => { let line=candleChart.addLineSeries({color,lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,priceLineVisible:false,lastValueVisible:false}); line.setData(candles.map(c=>({time:c.time,value:price}))); window.markerLines.push(line); };
+  if (currentHlMarkers.includes("24h") && ticker) { addHLine(ticker.high_24h,"#00ccff"); addHLine(ticker.low_24h,"#ff8800"); }
+  if (currentHlMarkers.includes("1h") && candles.length) { let now=candles[candles.length-1].time, hourAgo=now-3600, filtered=candles.filter(c=>c.time>=hourAgo); if(filtered.length){ addHLine(Math.max(...filtered.map(c=>c.high)),"cyan"); addHLine(Math.min(...filtered.map(c=>c.low)),"orange"); } }
+  if (currentHlMarkers.includes("5m") && candles.length) { let now=candles[candles.length-1].time, fiveAgo=now-300, filtered=candles.filter(c=>c.time>=fiveAgo); if(filtered.length){ addHLine(Math.max(...filtered.map(c=>c.high)),"lightgreen"); addHLine(Math.min(...filtered.map(c=>c.low)),"salmon"); } }
+  if (currentHlMarkers.includes("15m") && candles.length) { let now=candles[candles.length-1].time, fifteenAgo=now-900, filtered=candles.filter(c=>c.time>=fifteenAgo); if(filtered.length){ addHLine(Math.max(...filtered.map(c=>c.high)),"yellow"); addHLine(Math.min(...filtered.map(c=>c.low)),"magenta"); } }
+  if (entryPrice !== null && !isNaN(entryPrice)) { let line=candleChart.addLineSeries({color:'#ffaa00',lineWidth:2,lineStyle:LightweightCharts.LineStyle.Solid,title:'Entry'}); line.setData(candles.map(c=>({time:c.time,value:entryPrice}))); window.markerLines.push(line); }
+}
 
-    function updateCheckGroup(groupId, values) { document.querySelectorAll(`#${groupId} input[type="checkbox"]`).forEach(cb => cb.checked = values.includes(cb.value)); }
-    function getCheckValues(groupId) { return Array.from(document.querySelectorAll(`#${groupId} input[type="checkbox"]:checked`)).map(cb => cb.value); }
-
-    function applyPreset(coin) {
-        const preset = getPreset(coin);
-        if (preset) {
-            currentInterval = preset.interval || DEFAULT_INTERVAL;
-            currentIndicators = preset.indicators || ["ema7","ema17"];
-            currentHlMarkers = preset.hlMarkers || [];
-        } else {
-            currentInterval = DEFAULT_INTERVAL;
-            currentIndicators = ["ema7","ema17"];
-            currentHlMarkers = [];
-        }
-        document.querySelectorAll('input[name="interval"]').forEach(r => { if (r.value === currentInterval) r.checked = true; });
-        updateCheckGroup("indicatorsGroup", currentIndicators);
-        updateCheckGroup("hlMarkersGroup", currentHlMarkers);
-        if (currentCoin) fetchDataAndUpdate();
-    }
-
-    function resetChartView() {
-        if (candleChart && volumeChart) {
-            candleChart.timeScale().fitContent();
-            volumeChart.timeScale().fitContent();
-        }
-    }
-
-    function syncVolumeRange() {
-        if (!candleChart || !volumeChart) return;
-        const range = candleChart.timeScale().getVisibleLogicalRange();
-        if (range) volumeChart.timeScale().setVisibleLogicalRange(range);
-    }
-
-    function buildCoinSelector() {
-        const grid = document.getElementById("coinsGrid");
-        grid.innerHTML = "";
-        for (const [symbol, info] of Object.entries(CRYPTO_LIST)) {
-            const card = document.createElement("div");
-            card.className = "coin-card";
-            card.style.borderColor = info.color;
-            card.innerHTML = `<div class="coin-symbol" style="color:${info.color}">${symbol}</div><div class="coin-name">${info.name}</div><div class="coin-pair">USDT</div>`;
-            card.onclick = () => selectCoin(symbol);
-            grid.appendChild(card);
-        }
-    }
-
-    function selectCoin(coin) {
-        if (pollTimer) clearInterval(pollTimer);
-        currentCoin = coin;
-        applyPreset(coin);
-        // Reset cross alert state for new coin
-        lastCrossAlertTime = 0;
-        prevEMA7 = null; prevEMA17 = null;
-        document.getElementById("selectorView").style.display = "none";
-        document.getElementById("chartView").style.display = "block";
-        document.getElementById("chartTitle").innerHTML = `${CRYPTO_LIST[coin].name} (${coin}/USDT) Live Chart`;
-        document.getElementById("chartTitle").style.color = CRYPTO_LIST[coin].color;
-        candleData = []; priceHistory = []; entryPrice = null;
-        document.getElementById("entryPriceInput").value = "";
-        document.getElementById("pnlDisplay").innerHTML = "No entry set";
-        if (candleSeries) candleSeries.setData([]);
-        if (volumeSeries) volumeSeries.setData([]);
-        for (let key in indicatorLines) if (indicatorLines[key]) candleChart?.removeSeries(indicatorLines[key]);
-        indicatorLines = {};
-        pollTimer = setInterval(() => fetchDataAndUpdate(), REFRESH_MS);
-        fetchDataAndUpdate().then(() => resetChartView());
-    }
-
-    function goBack() {
-        if (pollTimer) clearInterval(pollTimer);
-        pollTimer = null;
-        currentCoin = null;
-        document.getElementById("selectorView").style.display = "block";
-        document.getElementById("chartView").style.display = "none";
-    }
-
-    async function fetchCandles(symbol, interval) {
-        const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=${interval}&limit=${MAX_CANDLES}`);
-        const data = await res.json();
-        return data.map(k => ({ time: Math.floor(k[0]/1000), open: parseFloat(k[1]), high: parseFloat(k[2]), low: parseFloat(k[3]), close: parseFloat(k[4]), volume: parseFloat(k[5]) }));
-    }
-    async function fetchTicker(symbol) {
-        const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`);
-        const data = await res.json();
-        return { ltp: parseFloat(data.lastPrice), change_pct: parseFloat(data.priceChangePercent), high_24h: parseFloat(data.highPrice), low_24h: parseFloat(data.lowPrice), volume_24h: parseFloat(data.volume), bid: parseFloat(data.bidPrice), ask: parseFloat(data.askPrice) };
-    }
-
-    // Indicator calculations
-    function computeEMA(values, period) { let k=2/(period+1), ema=[], prev=values[0]; for(let i=0;i<values.length;i++) { if(i===0) ema[i]=values[i]; else ema[i]=values[i]*k+prev*(1-k); prev=ema[i]; } return ema; }
-    function computeSMA(values, period) { let sma=[]; for(let i=0;i<values.length;i++) { if(i<period-1) sma[i]=null; else { let sum=0; for(let j=i-period+1;j<=i;j++) sum+=values[j]; sma[i]=sum/period; } } return sma; }
-    function computeVWAP(candles) { let cumPV=0, cumVol=0, vwap=[]; for(let i=0;i<candles.length;i++) { const typical=(candles[i].high+candles[i].low+candles[i].close)/3; cumPV+=typical*candles[i].volume; cumVol+=candles[i].volume; vwap[i]=cumVol?cumPV/cumVol:candles[i].close; } return vwap; }
-    function computeSuperTrend(candles, period=10, mult=3) {
-        let tr=[]; for(let i=0;i<candles.length;i++) { if(i===0) tr[i]=candles[i].high-candles[i].low; else { const hl=candles[i].high-candles[i].low, hc=Math.abs(candles[i].high-candles[i-1].close), lc=Math.abs(candles[i].low-candles[i-1].close); tr[i]=Math.max(hl,hc,lc); } }
-        let atr=[]; for(let i=0;i<candles.length;i++) { if(i<period-1) atr[i]=null; else { let sum=0; for(let j=i-period+1;j<=i;j++) sum+=tr[j]; atr[i]=sum/period; } }
-        let src=candles.map(c=>(c.high+c.low)/2), upper=[], lower=[];
-        for(let i=0;i<candles.length;i++) { upper[i]=src[i]+(atr[i]?mult*atr[i]:0); lower[i]=src[i]-(atr[i]?mult*atr[i]:0); }
-        let st=[], trend=[]; for(let i=0;i<candles.length;i++) { if(i<period) { st[i]=null; trend[i]=1; } else { if(trend[i-1]===1) { if(candles[i].close<=lower[i]) { trend[i]=-1; st[i]=upper[i]; } else { trend[i]=1; st[i]=(upper[i]<st[i-1])?upper[i]:st[i-1]; } } else { if(candles[i].close>=upper[i]) { trend[i]=1; st[i]=lower[i]; } else { trend[i]=-1; st[i]=(lower[i]>st[i-1])?lower[i]:st[i-1]; } } } }
-        return st;
-    }
-
-    function updateKPI(ticker, coin) {
-        const bar = document.getElementById("kpiBar");
-        if (!ticker) return;
-        const color = CRYPTO_LIST[coin].color;
-        const chgColor = ticker.change_pct >= 0 ? "#00ff88" : "#ff4444";
-        let trend = "--";
-        if (priceHistory.length >= 2) trend = priceHistory[priceHistory.length-1] > priceHistory[priceHistory.length-2] ? "UP" : (priceHistory[priceHistory.length-1] < priceHistory[priceHistory.length-2] ? "DN" : "--");
-        const trendColor = trend === "UP" ? "#00ff88" : (trend === "DN" ? "#ff4444" : "#888");
-        bar.innerHTML = `
-            <div class="kpi-card" style="border-color:${color}"><div class="kpi-label">LTP</div><div class="kpi-value" style="color:${color}">$${ticker.ltp.toFixed(6)}</div></div>
-            <div class="kpi-card" style="border-color:${chgColor}"><div class="kpi-label">24h Chng</div><div class="kpi-value" style="color:${chgColor}">${ticker.change_pct.toFixed(2)}%</div></div>
-            <div class="kpi-card" style="border-color:${trendColor}"><div class="kpi-label">Trend</div><div class="kpi-value" style="color:${trendColor}">${trend}</div></div>
-            <div class="kpi-card" style="border-color:#00ccff"><div class="kpi-label">24h High</div><div class="kpi-value" style="color:#00ccff">$${ticker.high_24h.toFixed(6)}</div></div>
-            <div class="kpi-card" style="border-color:#ff8800"><div class="kpi-label">24h Low</div><div class="kpi-value" style="color:#ff8800">$${ticker.low_24h.toFixed(6)}</div></div>
-            <div class="kpi-card" style="border-color:#aaffaa"><div class="kpi-label">Bid</div><div class="kpi-value" style="color:#aaffaa">$${ticker.bid.toFixed(6)}</div></div>
-            <div class="kpi-card" style="border-color:#ffaaaa"><div class="kpi-label">Ask</div><div class="kpi-value" style="color:#ffaaaa">$${ticker.ask.toFixed(6)}</div></div>
-        `;
-    }
-
-    async function fetchDataAndUpdate() {
-        if (!currentCoin) return;
-        const symbol = SYMBOL_MAP[currentCoin];
-        try {
-            const [candles, ticker] = await Promise.all([fetchCandles(symbol, currentInterval), fetchTicker(symbol)]);
-            if (!candles.length) return;
-            candleData = candles; tickerData = ticker;
-            priceHistory.push(ticker.ltp); if (priceHistory.length > 5) priceHistory.shift();
-            updateKPI(ticker, currentCoin);
-            document.getElementById("sourceLabel").innerHTML = `Binance | ${currentCoin}/USDT | ${currentInterval} | Updated: ${new Date().toLocaleTimeString()}`;
-            if (entryPrice !== null && !isNaN(entryPrice)) {
-                const pnlAbs = ticker.ltp - entryPrice, pnlPct = (pnlAbs / entryPrice) * 100;
-                document.getElementById("pnlDisplay").innerHTML = `<span style="color:${pnlAbs>=0?'#00ff88':'#ff4444'}">PnL: $${pnlAbs.toFixed(6)} (${pnlPct.toFixed(2)}%)</span>`;
-            } else document.getElementById("pnlDisplay").innerHTML = "No entry set";
-            renderCandles(candles, ticker);
-
-            // EMA 7/17 cross detection (only if both EMAs are toggled)
-            if (currentIndicators.includes("ema7") && currentIndicators.includes("ema17")) {
-                let intervalSeconds = 60; // default 1m
-                if (currentInterval === "1m") intervalSeconds = 60;
-                else if (currentInterval === "2m") intervalSeconds = 120;
-                else if (currentInterval === "3m") intervalSeconds = 180;
-                else if (currentInterval === "5m") intervalSeconds = 300;
-                else if (currentInterval === "10m") intervalSeconds = 600;
-                else if (currentInterval === "15m") intervalSeconds = 900;
-                else if (currentInterval === "30m") intervalSeconds = 1800;
-                else if (currentInterval === "1h") intervalSeconds = 3600;
-                else if (currentInterval === "1d") intervalSeconds = 86400;
-                checkEMA7_17CrossAndAlert(candles, intervalSeconds);
-            }
-        } catch(e) { console.error(e); }
-    }
-
-    function renderCandles(candles, ticker) {
-        if (!candleChart) {
-            candleChart = LightweightCharts.createChart(document.getElementById('candle-chart'), {
-                layout: { background: { color: '#111' }, textColor: '#ccc' },
-                grid: { vertLines: { color: '#1e1e1e' }, horzLines: { color: '#1e1e1e' } },
-                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-                rightPriceScale: { borderColor: '#333', scaleMargins: { top: 0.1, bottom: 0.1 } },
-                timeScale: { borderColor: '#333', timeVisible: true, secondsVisible: false }
-            });
-            candleSeries = candleChart.addCandlestickSeries({ upColor: '#00ff88', downColor: '#ff4444', borderVisible: false, wickUpColor: '#00ff88', wickDownColor: '#ff4444' });
-            volumeChart = LightweightCharts.createChart(document.getElementById('volume-chart'), {
-                layout: { background: { color: '#111' }, textColor: '#ccc' },
-                grid: { vertLines: { color: '#1e1e1e' }, horzLines: { color: '#1e1e1e' } },
-                height: 150,
-                crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
-                timeScale: { borderColor: '#333', timeVisible: true, visible: true }
-            });
-            volumeSeries = volumeChart.addHistogramSeries({ color: '#aaa', priceFormat: { type: 'volume' }, priceScaleId: '' });
-            // bidirectional sync
-            let syncing = false;
-            candleChart.timeScale().subscribeVisibleLogicalRangeChange((range) => { if (!syncing && range) { syncing = true; volumeChart.timeScale().setVisibleLogicalRange(range); syncing = false; } });
-            volumeChart.timeScale().subscribeVisibleLogicalRangeChange((range) => { if (!syncing && range) { syncing = true; candleChart.timeScale().setVisibleLogicalRange(range); syncing = false; } });
-        }
-
-        const candleItems = candles.map(c => ({ time: c.time, open: c.open, high: c.high, low: c.low, close: c.close }));
-        const volumeItems = candles.map(c => ({ time: c.time, value: c.volume, color: c.close >= c.open ? '#00ff88' : '#ff4444' }));
-        candleSeries.setData(candleItems);
-        volumeSeries.setData(volumeItems);
-        setTimeout(() => syncVolumeRange(), 10);
-
-        for (let key in indicatorLines) if (indicatorLines[key]) candleChart.removeSeries(indicatorLines[key]);
-        indicatorLines = {};
-        const closes = candles.map(c => c.close);
-
-        // EMA7 (default) and EMA17 with priceLineVisible false
-        if (currentIndicators.includes("ema7") && candles.length >= 7) {
-            let ema7 = computeEMA(closes, 7);
-            let line = candleChart.addLineSeries({ color: '#ff66cc', lineWidth: 2, title: 'EMA7', priceLineVisible: false, lastValueVisible: false });
-            line.setData(ema7.map((v,i) => ({ time: candles[i].time, value: v })));
-            indicatorLines.ema7 = line;
-        }
-        if (currentIndicators.includes("ema17") && candles.length >= 17) {
-            let ema17 = computeEMA(closes, 17);
-            let line = candleChart.addLineSeries({ color: '#00ccff', lineWidth: 2, title: 'EMA17', priceLineVisible: false, lastValueVisible: false });
-            line.setData(ema17.map((v,i) => ({ time: candles[i].time, value: v })));
-            indicatorLines.ema17 = line;
-        }
-        if (currentIndicators.includes("sma20") && candles.length >= 20) {
-            let sma20 = computeSMA(closes, 20);
-            let line = candleChart.addLineSeries({ color: '#ffaa33', lineWidth: 1, title: 'SMA20', priceLineVisible: false, lastValueVisible: false });
-            line.setData(sma20.map((v,i) => ({ time: candles[i].time, value: v })));
-            indicatorLines.sma20 = line;
-        }
-        if (currentIndicators.includes("vwap") && candles.length > 0) {
-            let vwap = computeVWAP(candles);
-            let line = candleChart.addLineSeries({ color: '#ffaa33', lineWidth: 1, lineStyle: LightweightCharts.LineStyle.Solid, title: 'VWAP', priceLineVisible: false, lastValueVisible: false });
-            line.setData(vwap.map((v,i) => ({ time: candles[i].time, value: v })));
-            indicatorLines.vwap = line;
-        }
-        if (currentIndicators.includes("supertrend") && candles.length >= 10) {
-            let st = computeSuperTrend(candles,10,3);
-            let line = candleChart.addLineSeries({ color: '#ff44ff', lineWidth: 1, title: 'SuperTrend', priceLineVisible: false, lastValueVisible: false });
-            line.setData(st.map((v,i) => ({ time: candles[i].time, value: v })));
-            indicatorLines.supertrend = line;
-        }
-
-        // Markers (unchanged)
-        if (window.markerLines) window.markerLines.forEach(l=>candleChart.removeSeries(l));
-        window.markerLines = [];
-        const addHLine = (price,color) => { let line=candleChart.addLineSeries({color,lineWidth:1,lineStyle:LightweightCharts.LineStyle.Dashed,priceLineVisible:false,lastValueVisible:false}); line.setData(candles.map(c=>({time:c.time,value:price}))); window.markerLines.push(line); };
-        if (currentHlMarkers.includes("24h") && ticker) { addHLine(ticker.high_24h,"#00ccff"); addHLine(ticker.low_24h,"#ff8800"); }
-        if (currentHlMarkers.includes("1h") && candles.length) { let now=candles[candles.length-1].time, hourAgo=now-3600, filtered=candles.filter(c=>c.time>=hourAgo); if(filtered.length){ addHLine(Math.max(...filtered.map(c=>c.high)),"cyan"); addHLine(Math.min(...filtered.map(c=>c.low)),"orange"); } }
-        if (currentHlMarkers.includes("5m") && candles.length) { let now=candles[candles.length-1].time, fiveAgo=now-300, filtered=candles.filter(c=>c.time>=fiveAgo); if(filtered.length){ addHLine(Math.max(...filtered.map(c=>c.high)),"lightgreen"); addHLine(Math.min(...filtered.map(c=>c.low)),"salmon"); } }
-        if (currentHlMarkers.includes("15m") && candles.length) { let now=candles[candles.length-1].time, fifteenAgo=now-900, filtered=candles.filter(c=>c.time>=fifteenAgo); if(filtered.length){ addHLine(Math.max(...filtered.map(c=>c.high)),"yellow"); addHLine(Math.min(...filtered.map(c=>c.low)),"magenta"); } }
-        if (entryPrice !== null && !isNaN(entryPrice)) { let line=candleChart.addLineSeries({color:'#ffaa00',lineWidth:2,lineStyle:LightweightCharts.LineStyle.Solid,title:'Entry'}); line.setData(candles.map(c=>({time:c.time,value:entryPrice}))); window.markerLines.push(line); }
-    }
-
-    function initUI() {
-        buildCoinSelector();
-        // Interval radio buttons
-        const intervalDiv = document.getElementById("intervalGroup");
-        intervalDiv.innerHTML = INTERVALS.map(iv => `<label><input type="radio" name="interval" value="${iv}"> ${iv} </label>`).join('');
-        document.querySelectorAll('input[name="interval"]').forEach(r => r.addEventListener('change', (e) => { if(e.target.checked){ currentInterval=e.target.value; if(currentCoin) fetchDataAndUpdate().then(()=>resetChartView()); } }));
-
-        // High/Low markers checklist
-        const hlDiv = document.getElementById("hlMarkersGroup");
-        hlDiv.innerHTML = `<label><input type="checkbox" value="24h"> 24h High/Low</label><label><input type="checkbox" value="1h"> 1h High/Low</label><label><input type="checkbox" value="5m"> 5m High/Low</label><label><input type="checkbox" value="15m"> 15m High/Low</label>`;
-        hlDiv.querySelectorAll('input').forEach(cb => cb.addEventListener('change', () => { currentHlMarkers = getCheckValues("hlMarkersGroup"); if(currentCoin) fetchDataAndUpdate(); }));
-
-        // Indicators checklist: include EMA7 and EMA17 by default
-        const indDiv = document.getElementById("indicatorsGroup");
-        indDiv.innerHTML = `<label><input type="checkbox" value="ema7"> EMA7</label><label><input type="checkbox" value="ema17"> EMA17</label><label><input type="checkbox" value="sma20"> SMA20</label><label><input type="checkbox" value="vwap"> VWAP</label><label><input type="checkbox" value="supertrend"> SuperTrend</label>`;
-        indDiv.querySelectorAll('input').forEach(cb => cb.addEventListener('change', () => { currentIndicators = getCheckValues("indicatorsGroup"); if(currentCoin) fetchDataAndUpdate(); }));
-
-        document.getElementById("savePresetBtn").onclick = () => { if(currentCoin) { savePreset(currentCoin, {interval:currentInterval, indicators:currentIndicators, hlMarkers:currentHlMarkers}); alert(`Preset saved for ${currentCoin}`); } };
-        document.getElementById("resetPresetBtn").onclick = () => { if(currentCoin) { applyPreset(currentCoin); if(currentCoin) fetchDataAndUpdate().then(()=>resetChartView()); } };
-        document.getElementById("resetViewBtn").onclick = () => resetChartView();
-
-        document.getElementById("entryPriceInput").addEventListener('change', (e) => { let v=parseFloat(e.target.value); entryPrice=isNaN(v)?null:v; if(currentCoin) fetchDataAndUpdate(); });
-        document.getElementById("backBtn").onclick = goBack;
-
-        // Telegram persistence & test
-        const savedToken = localStorage.getItem("tg_token"), savedChatId = localStorage.getItem("tg_chatid");
-        if (savedToken) document.getElementById("tgToken").value = savedToken;
-        if (savedChatId) document.getElementById("tgChatId").value = savedChatId;
-        document.getElementById("tgToken").addEventListener("change", () => localStorage.setItem("tg_token", getTgToken()));
-        document.getElementById("tgChatId").addEventListener("change", () => localStorage.setItem("tg_chatid", getTgChatId()));
-        document.getElementById("tgTestBtn").onclick = () => { sendTelegramAlert("🔕 <b>Test Alert</b>\nYour Crypto Chart Telegram alerts are working correctly! ✅", "test", 0); };
-
-        // Clock
-        function updateClock() { let now=new Date(), est=new Date(now.toLocaleString("en-US",{timeZone:"America/New_York"})); document.getElementById("estClock").innerHTML=`EST: ${est.toLocaleString()}`; }
-        updateClock(); setInterval(updateClock, 1000);
-
-        // AUTO SELECT FIDA as default coin (simulate click)
-        setTimeout(() => { selectCoin("FIDA"); }, 100);
-    }
-
-    initUI();
+function initUI() {
+  buildCoinSelector();
+  const intervalDiv = document.getElementById("intervalGroup");
+  intervalDiv.innerHTML = INTERVALS.map(iv => `<label><input type="radio" name="interval" value="${iv}"> ${iv} </label>`).join('');
+  document.querySelectorAll('input[name="interval"]').forEach(r => r.addEventListener('change', (e) => { if(e.target.checked){ currentInterval=e.target.value; if(currentCoin) fetchDataAndUpdate().then(()=>resetChartView()); } }));
+  const hlDiv = document.getElementById("hlMarkersGroup");
+  hlDiv.innerHTML = `<label><input type="checkbox" value="24h"> 24h High/Low</label><label><input type="checkbox" value="1h"> 1h High/Low</label><label><input type="checkbox" value="5m"> 5m High/Low</label><label><input type="checkbox" value="15m"> 15m High/Low</label>`;
+  hlDiv.querySelectorAll('input').forEach(cb => cb.addEventListener('change', () => { currentHlMarkers = getCheckValues("hlMarkersGroup"); if(currentCoin) fetchDataAndUpdate(); }));
+  const indDiv = document.getElementById("indicatorsGroup");
+  indDiv.innerHTML = `<label><input type="checkbox" value="ema7"> EMA7</label><label><input type="checkbox" value="ema17"> EMA17</label><label><input type="checkbox" value="sma20"> SMA20</label><label><input type="checkbox" value="vwap"> VWAP</label><label><input type="checkbox" value="supertrend"> SuperTrend</label>`;
+  indDiv.querySelectorAll('input').forEach(cb => cb.addEventListener('change', () => { currentIndicators = getCheckValues("indicatorsGroup"); if(currentCoin) fetchDataAndUpdate(); }));
+  document.getElementById("savePresetBtn").onclick = () => { if(currentCoin) { savePreset(currentCoin, {interval:currentInterval, indicators:currentIndicators, hlMarkers:currentHlMarkers}); alert(`Preset saved for ${currentCoin}`); } };
+  document.getElementById("resetPresetBtn").onclick = () => { if(currentCoin) { applyPreset(currentCoin); if(currentCoin) fetchDataAndUpdate().then(()=>resetChartView()); } };
+  document.getElementById("resetViewBtn").onclick = () => resetChartView();
+  document.getElementById("entryPriceInput").addEventListener('change', (e) => { let v=parseFloat(e.target.value); entryPrice=isNaN(v)?null:v; if(currentCoin) fetchDataAndUpdate(); });
+  document.getElementById("backBtn").onclick = goBack;
+  const savedToken = localStorage.getItem("tg_token"), savedChatId = localStorage.getItem("tg_chatid");
+  if (savedToken) document.getElementById("tgToken").value = savedToken;
+  if (savedChatId) document.getElementById("tgChatId").value = savedChatId;
+  document.getElementById("tgToken").addEventListener("change", () => localStorage.setItem("tg_token", getTgToken()));
+  document.getElementById("tgChatId").addEventListener("change", () => localStorage.setItem("tg_chatid", getTgChatId()));
+  document.getElementById("tgTestBtn").onclick = () => { sendTelegramAlert("🔕 <b>Test Alert</b>\nYour Crypto Chart Telegram alerts are working correctly! ✅", "test_alert", 0); };
+  function updateClock() { let now=new Date(), est=new Date(now.toLocaleString("en-US",{timeZone:"America/New_York"})); document.getElementById("estClock").innerHTML=`EST: ${est.toLocaleString()}`; }
+  updateClock(); setInterval(updateClock, 1000);
+  setTimeout(() => { selectCoin("FIDA"); }, 100);
+}
+initUI();
 </script>
 </body>
 </html>
