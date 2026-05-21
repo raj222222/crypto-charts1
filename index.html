@@ -53,6 +53,7 @@ button:hover { background: #3a3a3a; }
 .tg-status.ok { background: #1a3a1a; color: #00ff88; border: 1px solid #00aa44; }
 .tg-status.err { background: #3a1a1a; color: #ff6666; border: 1px solid #aa2222; }
 .tg-status.idle { background: #1a1a2a; color: #888; border: 1px solid #333; }
+.tg-status.cross { background: #2a2a1a; color: #ffaa44; border: 1px solid #ffaa44; }
 @media (max-width: 700px) { .coins-grid { gap: 12px; } .coin-card { padding: 12px 18px; min-width: 90px; } .coin-symbol { font-size: 16px; } .controls-row { flex-direction: column; align-items: stretch; } .tg-token-input { width: 100%; } }
 </style>
 </head>
@@ -119,7 +120,7 @@ button:hover { background: #3a3a3a; }
 </div>
 
 <script>
-// ----------------------------- 42+ COINS (FIDA included) -----------------------------
+// ----------------------------- COINS -----------------------------
 const CRYPTO_LIST = {
   "FIDA": { name: "Bonfida", color: "#8A2BE2" },
   "BTC": { name: "Bitcoin", color: "#F7931A" }, "ETH": { name: "Ethereum", color: "#627EEA" },
@@ -157,19 +158,48 @@ let currentHlMarkers = [];
 let entryPrice = null, tickerData = null, candleData = [], priceHistory = [], pollTimer = null;
 let candleChart = null, volumeChart = null, candleSeries = null, volumeSeries = null, indicatorLines = {};
 
-// ---------- EMA cross alert state (no angle, just cross) ----------
+// Alert cooldowns (30 seconds per coin per direction for faster testing, but still prevents spam)
 const alertCooldowns = {};
 
-// ---------- Telegram helpers ----------
+// Helper to show temporary cross detection on status bar
+let crossStatusTimeout = null;
+function showCrossStatus(message, isError = false) {
+  const statusDiv = document.getElementById("tgStatus");
+  if (!statusDiv) return;
+  const originalClass = statusDiv.className;
+  statusDiv.textContent = message;
+  statusDiv.className = "tg-status cross";
+  if (crossStatusTimeout) clearTimeout(crossStatusTimeout);
+  crossStatusTimeout = setTimeout(() => {
+    const token = getTgToken(), chatId = getTgChatId();
+    if (token && chatId) statusDiv.className = "tg-status ok";
+    else statusDiv.className = "tg-status idle";
+    statusDiv.textContent = token && chatId ? "Configured ✓" : "Not configured";
+  }, 3000);
+}
+
+// Telegram helpers
 function getTgToken() { return document.getElementById("tgToken")?.value.trim() || ""; }
 function getTgChatId() { return document.getElementById("tgChatId")?.value.trim() || ""; }
-function setTgStatus(msg, type) { let el = document.getElementById("tgStatus"); if(el) { el.textContent = msg; el.className = "tg-status " + type; } }
+function setTgStatus(msg, type) { 
+  let el = document.getElementById("tgStatus"); 
+  if(el && !crossStatusTimeout) { 
+    el.textContent = msg; 
+    el.className = "tg-status " + type; 
+  } 
+}
 
-async function sendTelegramAlert(message, alertKey, cooldownMs = 60000) {
+async function sendTelegramAlert(message, alertKey, cooldownMs = 30000) {
   const token = getTgToken(), chatId = getTgChatId();
-  if (!token || !chatId) { setTgStatus("Token/Chat ID missing", "err"); return false; }
+  if (!token || !chatId) { 
+    setTgStatus("Token/Chat ID missing", "err"); 
+    return false; 
+  }
   const now = Date.now();
-  if (alertCooldowns[alertKey] && now - alertCooldowns[alertKey] < cooldownMs) return false;
+  if (alertCooldowns[alertKey] && now - alertCooldowns[alertKey] < cooldownMs) {
+    console.log(`Cooldown active for ${alertKey}, skipping`);
+    return false;
+  }
   alertCooldowns[alertKey] = now;
   try {
     const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
@@ -183,9 +213,12 @@ async function sendTelegramAlert(message, alertKey, cooldownMs = 60000) {
   } catch(e) { setTgStatus("Network error", "err"); return false; }
 }
 
-// ---------- EMA 7/17 CROSS DETECTION: BULLISH + BEARISH (NO ANGLE) ----------
+// ---------- FIXED CROSS DETECTION (NO ANGLE, JUST CROSSOVER) ----------
 function checkEMA7_17CrossAndAlert(candles) {
-  if (!candles || candles.length < 30) return;
+  if (!candles || candles.length < 30) {
+    console.log("Not enough candles for EMA cross detection");
+    return;
+  }
   const closes = candles.map(c => c.close);
   const ema7 = computeEMA(closes, 7);
   const ema17 = computeEMA(closes, 17);
@@ -198,8 +231,14 @@ function checkEMA7_17CrossAndAlert(candles) {
   const prevEMA7Val = ema7[prevIdx];
   const prevEMA17Val = ema17[prevIdx];
   
-  // --- Bullish cross: 7 EMA crosses ABOVE 17 EMA from below (previous 7 <= 17, current 7 > 17)
+  // Bullish cross: 7 EMA crosses ABOVE 17 EMA
   const bullishCross = (prevEMA7Val <= prevEMA17Val) && (currentEMA7 > currentEMA17);
+  // Bearish cross: 17 EMA crosses ABOVE 7 EMA
+  const bearishCross = (prevEMA17Val <= prevEMA7Val) && (currentEMA17 > currentEMA7);
+  
+  console.log(`EMA check: prev7=${prevEMA7Val.toFixed(8)}, prev17=${prevEMA17Val.toFixed(8)}, curr7=${currentEMA7.toFixed(8)}, curr17=${currentEMA17.toFixed(8)}`);
+  console.log(`Bullish: ${bullishCross}, Bearish: ${bearishCross}`);
+  
   if (bullishCross) {
     const now = new Date();
     const timeStr = now.toLocaleString("en-US", { timeZone: "America/New_York" });
@@ -210,11 +249,10 @@ function checkEMA7_17CrossAndAlert(candles) {
                 `7 EMA crossed ABOVE 17 EMA (from below)\n` +
                 `Interval: ${currentInterval}\n` +
                 `Time (EST): ${timeStr}`;
-    sendTelegramAlert(msg, `ema_cross_bullish_${currentCoin}`, 60000);
+    showCrossStatus(`🚀 Bullish cross detected! Sending alert...`);
+    sendTelegramAlert(msg, `ema_cross_bullish_${currentCoin}`, 30000);
   }
   
-  // --- Bearish cross: 17 EMA crosses ABOVE 7 EMA from below (previous 17 <= 7, current 17 > 7)
-  const bearishCross = (prevEMA17Val <= prevEMA7Val) && (currentEMA17 > currentEMA7);
   if (bearishCross) {
     const now = new Date();
     const timeStr = now.toLocaleString("en-US", { timeZone: "America/New_York" });
@@ -225,11 +263,12 @@ function checkEMA7_17CrossAndAlert(candles) {
                 `17 EMA crossed ABOVE 7 EMA (from below)\n` +
                 `Interval: ${currentInterval}\n` +
                 `Time (EST): ${timeStr}`;
-    sendTelegramAlert(msg, `ema_cross_bearish_${currentCoin}`, 60000);
+    showCrossStatus(`🐻 Bearish cross detected! Sending alert...`);
+    sendTelegramAlert(msg, `ema_cross_bearish_${currentCoin}`, 30000);
   }
 }
 
-// localStorage presets
+// localStorage presets & UI helpers (unchanged)
 function loadPresets() { const s = localStorage.getItem("crypto_presets"); return s ? JSON.parse(s) : {}; }
 function savePreset(coin, preset) { let p = loadPresets(); p[coin] = preset; localStorage.setItem("crypto_presets", JSON.stringify(p)); }
 function getPreset(coin) { return loadPresets()[coin] || null; }
@@ -353,9 +392,11 @@ async function fetchDataAndUpdate() {
     } else document.getElementById("pnlDisplay").innerHTML = "No entry set";
     renderCandles(candles, ticker);
 
-    // EMA 7/17 cross detection (only if both EMAs enabled) – NO ANGLE CHECK
+    // EMA cross detection (only if both EMAs are enabled in UI)
     if (currentIndicators.includes("ema7") && currentIndicators.includes("ema17")) {
       checkEMA7_17CrossAndAlert(candles);
+    } else {
+      console.log("EMAs not both enabled, skipping cross detection");
     }
   } catch(e) { console.error(e); }
 }
