@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-<title>Live Crypto Chart + FIDA | 7/17 EMA Cross Alerts (Bullish + Bearish)</title>
+<title>Live Crypto Chart + FIDA | 7/17 EMA Cross Alerts (No Angle)</title>
 <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
 <style>
@@ -103,7 +103,7 @@ button:hover { background: #3a3a3a; }
 
     <!-- Telegram alert config -->
     <div class="tg-config">
-      <span class="tg-config-title">📨 Telegram Alerts (7/17 EMA cross with angle >20°)</span>
+      <span class="tg-config-title">📨 Telegram Alerts (7/17 EMA cross – immediate on crossover)</span>
       <input type="text" id="tgToken" class="tg-input tg-token-input" placeholder="Bot Token: 7412345678:AAFxxx..." />
       <input type="text" id="tgChatId" class="tg-input tg-chatid-input" placeholder="Chat ID: 123456789" />
       <button id="tgTestBtn" style="border-color:#29a8e0;color:#29a8e0;">🔔 Test</button>
@@ -157,8 +157,7 @@ let currentHlMarkers = [];
 let entryPrice = null, tickerData = null, candleData = [], priceHistory = [], pollTimer = null;
 let candleChart = null, volumeChart = null, candleSeries = null, volumeSeries = null, indicatorLines = {};
 
-// ---------- EMA cross alert state (bullish + bearish) ----------
-let prevEMA7 = null, prevEMA17 = null; // not strictly required but kept for legacy
+// ---------- EMA cross alert state (no angle, just cross) ----------
 const alertCooldowns = {};
 
 // ---------- Telegram helpers ----------
@@ -184,18 +183,8 @@ async function sendTelegramAlert(message, alertKey, cooldownMs = 60000) {
   } catch(e) { setTgStatus("Network error", "err"); return false; }
 }
 
-// Angle calculation (degrees) from slope of last 2 points
-function computeAngle(lastValue, prevValue, timeDiffSec) {
-  if (timeDiffSec <= 0) return 0;
-  const deltaY = lastValue - prevValue;
-  const deltaX = timeDiffSec;
-  const slope = deltaY / deltaX;
-  const angleRad = Math.atan(slope);
-  return angleRad * (180 / Math.PI);
-}
-
-// ---------- EMA 7/17 CROSS DETECTION: BULLISH + BEARISH with ANGLE >20° ----------
-function checkEMA7_17CrossAndAlert(candles, intervalSec) {
+// ---------- EMA 7/17 CROSS DETECTION: BULLISH + BEARISH (NO ANGLE) ----------
+function checkEMA7_17CrossAndAlert(candles) {
   if (!candles || candles.length < 30) return;
   const closes = candles.map(c => c.close);
   const ema7 = computeEMA(closes, 7);
@@ -212,39 +201,31 @@ function checkEMA7_17CrossAndAlert(candles, intervalSec) {
   // --- Bullish cross: 7 EMA crosses ABOVE 17 EMA from below (previous 7 <= 17, current 7 > 17)
   const bullishCross = (prevEMA7Val <= prevEMA17Val) && (currentEMA7 > currentEMA17);
   if (bullishCross) {
-    const angle7 = computeAngle(currentEMA7, prevEMA7Val, intervalSec);
-    if (angle7 > 20) {
-      const now = new Date();
-      const timeStr = now.toLocaleString("en-US", { timeZone: "America/New_York" });
-      const price = candles[lastIdx].close.toFixed(6);
-      const msg = `📈 <b>BULLISH EMA CROSS (7/17)</b>\n` +
-                  `Coin: ${currentCoin}/USDT\n` +
-                  `Price: $${price}\n` +
-                  `7 EMA crossed ABOVE 17 EMA (from below)\n` +
-                  `Angle: ${angle7.toFixed(1)}° (>20°)\n` +
-                  `Interval: ${currentInterval}\n` +
-                  `Time (EST): ${timeStr}`;
-      sendTelegramAlert(msg, `ema_cross_bullish_${currentCoin}`, 60000);
-    }
+    const now = new Date();
+    const timeStr = now.toLocaleString("en-US", { timeZone: "America/New_York" });
+    const price = candles[lastIdx].close.toFixed(6);
+    const msg = `📈 <b>BULLISH EMA CROSS (7/17)</b>\n` +
+                `Coin: ${currentCoin}/USDT\n` +
+                `Price: $${price}\n` +
+                `7 EMA crossed ABOVE 17 EMA (from below)\n` +
+                `Interval: ${currentInterval}\n` +
+                `Time (EST): ${timeStr}`;
+    sendTelegramAlert(msg, `ema_cross_bullish_${currentCoin}`, 60000);
   }
   
   // --- Bearish cross: 17 EMA crosses ABOVE 7 EMA from below (previous 17 <= 7, current 17 > 7)
   const bearishCross = (prevEMA17Val <= prevEMA7Val) && (currentEMA17 > currentEMA7);
   if (bearishCross) {
-    const angle17 = computeAngle(currentEMA17, prevEMA17Val, intervalSec);
-    if (angle17 > 20) {
-      const now = new Date();
-      const timeStr = now.toLocaleString("en-US", { timeZone: "America/New_York" });
-      const price = candles[lastIdx].close.toFixed(6);
-      const msg = `📉 <b>BEARISH EMA CROSS (17/7)</b>\n` +
-                  `Coin: ${currentCoin}/USDT\n` +
-                  `Price: $${price}\n` +
-                  `17 EMA crossed ABOVE 7 EMA (from below)\n` +
-                  `Angle: ${angle17.toFixed(1)}° (>20°)\n` +
-                  `Interval: ${currentInterval}\n` +
-                  `Time (EST): ${timeStr}`;
-      sendTelegramAlert(msg, `ema_cross_bearish_${currentCoin}`, 60000);
-    }
+    const now = new Date();
+    const timeStr = now.toLocaleString("en-US", { timeZone: "America/New_York" });
+    const price = candles[lastIdx].close.toFixed(6);
+    const msg = `📉 <b>BEARISH EMA CROSS (17/7)</b>\n` +
+                `Coin: ${currentCoin}/USDT\n` +
+                `Price: $${price}\n` +
+                `17 EMA crossed ABOVE 7 EMA (from below)\n` +
+                `Interval: ${currentInterval}\n` +
+                `Time (EST): ${timeStr}`;
+    sendTelegramAlert(msg, `ema_cross_bearish_${currentCoin}`, 60000);
   }
 }
 
@@ -290,7 +271,6 @@ function selectCoin(coin) {
   if (pollTimer) clearInterval(pollTimer);
   currentCoin = coin;
   applyPreset(coin);
-  // Reset alert cooldowns for new coin (optional, keep per-coin keys)
   document.getElementById("selectorView").style.display = "none";
   document.getElementById("chartView").style.display = "block";
   document.getElementById("chartTitle").innerHTML = `${CRYPTO_LIST[coin].name} (${coin}/USDT) Live Chart`;
@@ -373,19 +353,9 @@ async function fetchDataAndUpdate() {
     } else document.getElementById("pnlDisplay").innerHTML = "No entry set";
     renderCandles(candles, ticker);
 
-    // EMA 7/17 cross detection (only if both EMAs enabled)
+    // EMA 7/17 cross detection (only if both EMAs enabled) – NO ANGLE CHECK
     if (currentIndicators.includes("ema7") && currentIndicators.includes("ema17")) {
-      let intervalSeconds = 60;
-      if (currentInterval === "1m") intervalSeconds = 60;
-      else if (currentInterval === "2m") intervalSeconds = 120;
-      else if (currentInterval === "3m") intervalSeconds = 180;
-      else if (currentInterval === "5m") intervalSeconds = 300;
-      else if (currentInterval === "10m") intervalSeconds = 600;
-      else if (currentInterval === "15m") intervalSeconds = 900;
-      else if (currentInterval === "30m") intervalSeconds = 1800;
-      else if (currentInterval === "1h") intervalSeconds = 3600;
-      else if (currentInterval === "1d") intervalSeconds = 86400;
-      checkEMA7_17CrossAndAlert(candles, intervalSeconds);
+      checkEMA7_17CrossAndAlert(candles);
     }
   } catch(e) { console.error(e); }
 }
